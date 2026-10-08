@@ -26,7 +26,7 @@ jobs:
       - name: Lineage doc is up to date
         run: python scripts/gen_feature_lineage.py && git diff --exit-code docs/feature_lineage.md
       - name: Unit, leakage, API (E2E) and integration tests (fixtures only - never used for reported metrics)
-        run: pytest -q
+        run: pytest -q --cov=creditrisk --cov-report=term-missing:skip-covered
       - name: dbt parse/compile
         run: cd dbt && dbt parse --profiles-dir .
   docker-build:
@@ -35,4 +35,8 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -f infra/Dockerfile.api -t creditrisk-api:ci .
       - run: docker build -f infra/Dockerfile.mlflow -t creditrisk-mlflow:ci .
+      - run: docker build -f infra/Dockerfile.pipeline -t creditrisk-pipeline:ci .
+      # Vulnerability scan: defined here but NOT yet executed (the workflow has never run on a remote).
+      - uses: aquasecurity/trivy-action@0.28.0
+        with: {image-ref: "creditrisk-api:ci", severity: "CRITICAL,HIGH", exit-code: "1", ignore-unfixed: true}
   # Real-data training is NOT run in CI: the Kaggle files are licence-gated and not in the repository.

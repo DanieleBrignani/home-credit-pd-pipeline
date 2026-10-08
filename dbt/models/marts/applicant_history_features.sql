@@ -1,3 +1,4 @@
+{{ config(post_hook="alter table {{ this }} add primary key (sk_id_curr)") }}
 -- grain: 1 row / SK_ID_CURR that has any history. Also the ONLINE feature lookup table used by the API.
 -- Count-type features are 0-filled downstream only where "no history" genuinely means zero events;
 -- ratios stay NULL (unknown) so the model can use missingness. Done in features.py, not here.

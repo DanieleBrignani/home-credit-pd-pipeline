@@ -39,7 +39,27 @@ services:
       MODEL_ALIAS: champion
       API_KEY_SHA256S: ${API_KEY_SHA256S:?set API_KEY_SHA256S in .env (sha256 of the API key; see docs/runbook.md)}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
-    ports: ["${API_PORT:-8000}:8000"]
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-1200}
+    ports: ["127.0.0.1:${API_PORT:-8000}:8000"]   # loopback only (admin/metrics); public traffic goes through the TLS proxy
+    depends_on: {postgres: {condition: service_healthy}, mlflow: {condition: service_started}}
+
+  proxy:
+    image: caddy:2
+    ports: ["${TLS_PORT:-8443}:8443"]
+    volumes: ["./infra/Caddyfile:/etc/caddy/Caddyfile:ro", "caddydata:/data"]
+    depends_on: [api]
+
+  pipeline:
+    profiles: ["pipeline"]          # not started by `up`; run on demand
+    build: {context: ., dockerfile: infra/Dockerfile.pipeline}
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-creditrisk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-creditrisk}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      GIT_COMMIT: ${GIT_COMMIT:-unknown}
+    volumes: ["./data/raw:/data/raw", "./reports:/app/reports"]
     depends_on: {postgres: {condition: service_healthy}, mlflow: {condition: service_started}}
 
   prometheus:
@@ -58,5 +78,6 @@ services:
     depends_on: [prometheus]
 
 volumes:
+  caddydata:
   pgdata:
   mlartifacts:

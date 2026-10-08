@@ -14,6 +14,18 @@ pipeline:      ## validate -> ingest -> dbt build -> train -> register -> promot
 	$(PY) -m creditrisk.flows --raw-dir $(RAW)
 ingeststats:
 	$(PY) scripts/export_ingest_stats.py
+pipeline-container:   ## same pipeline inside the container image (needs data/raw; set GIT_COMMIT for lineage)
+	GIT_COMMIT=$$(git rev-parse HEAD) docker compose --profile pipeline run --rm pipeline
+smoke:         ## container E2E on the fixture DB
+	$(PY) scripts/smoke_stack.py
+smoke-real:    ## container E2E on the real DB + TLS proxy + measured rollback
+	$(PY) scripts/smoke_stack.py --real
+load:
+	$(PY) scripts/load_test.py --requests 3000 --concurrency 16 --workers 1 4
+backup-drill:  ## backup of irreproducible data -> restore into scratch DB -> compare counts
+	$(PY) scripts/backup_restore.py drill
+failure-analysis:
+	$(PY) scripts/failure_analysis.py
 lineage:
 	$(PY) scripts/gen_feature_lineage.py
 test:          ## unit + e2e (no DB needed) and integration (needs Postgres)
@@ -32,4 +44,4 @@ verify:
 	$(PY) scripts/verify_readme_numbers.py
 reproduce:
 	$(PY) scripts/reproduce_check.py
-all-real: up validate pipeline ingeststats lifecycle shap drift benchmark results verify reproduce
+all-real: up validate pipeline ingeststats lifecycle shap failure-analysis drift benchmark load backup-drill smoke-real results verify reproduce

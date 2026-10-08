@@ -33,22 +33,30 @@ def psql(db: str, sql: str) -> str:
 
 def counts(db: str) -> dict[str, int]:
     tables = psql(db, "select table_schema||'.'||table_name from information_schema.tables "
-                      "where table_schema in ('audit','meta','marts') and table_type='BASE TABLE' order by 1").splitlines()
+                      "where table_schema in ('audit','meta','marts','public') and table_type='BASE TABLE' order by 1").splitlines()
     return {t: int(psql(db, f'select count(*) from {t}')) for t in tables}
 
 
-def backup(out: Path) -> Path:
+REBUILDABLE = ("raw", "staging", "intermediate")   # recreated from the locked raw files by ingest + dbt build
+
+
+def backup(out: Path, full: bool = False) -> Path:
+    """Default: everything that cannot be rebuilt (audit trail, MLflow registry/runs in public, meta lineage, marts).
+    `--full` also dumps the multi-gigabyte raw/staging/intermediate schemas."""
     out.mkdir(parents=True, exist_ok=True)
-    name = f"{DB}_{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}.dump"
-    sh("docker", "exec", CONTAINER, "pg_dump", "-U", USER, "-Fc", "-f", f"/tmp/{name}", DB)
+    name = f"{DB}_{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}{'_full' if full else ''}.dump"
+    excl = [] if full else [a for s in REBUILDABLE for a in ("-N", s)]
+    sh("docker", "exec", CONTAINER, "pg_dump", "-U", USER, "-Fc", *excl, "-f", f"/tmp/{name}", DB)
     sh("docker", "cp", f"{CONTAINER}:/tmp/{name}", str(out / name))
     sh("docker", "exec", CONTAINER, "rm", f"/tmp/{name}")
     print("backup written:", out / name)
     return out / name
 
 
-def drill(out: Path) -> int:
-    dump = backup(out)
+def drill(out: Path, full: bool = False) -> int:
+    t0 = time.time()
+    dump = backup(out, full)
+    t_backup = time.time() - t0
     scratch = f"restore_drill_{int(time.time())}"
     psql("postgres", f"create database {scratch}")
     try:
@@ -67,5 +75,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["backup", "drill"])
     ap.add_argument("--out", type=Path, default=ROOT / "artifacts" / "backups")
+    ap.add_argument("--full", action="store_true", help="also dump raw/staging/intermediate (large)")
     a = ap.parse_args()
-    sys.exit(drill(a.out) if a.cmd == "drill" else (backup(a.out) and 0))
+    sys.exit(drill(a.out, a.full) if a.cmd == "drill" else (backup(a.out, a.full) and 0))

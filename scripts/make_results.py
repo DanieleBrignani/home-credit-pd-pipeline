@@ -106,6 +106,25 @@ def render_block() -> tuple[str, str]:
             a(f"- rollback drill: champion v{rb['from']} -> v{rb['to']}, then rolled forward to v{life['roll_forward']['to']}")
         else:
             a(f"- rollback drill: {rb}")
+    lt = load("load_test.json", False)
+    if lt:
+        a("\n**Concurrent load test** (`reports/load_test.json`; one machine shared by client, API workers and Postgres; "
+          "rate limiter off; synchronous audit insert included)\n")
+        a("| API workers | client concurrency | requests | errors | throughput (req/s) | p50 / p95 / p99 (ms) |\n|---|---|---|---|---|---|")
+        for r in lt["runs"]:
+            L_ = r["latency_ms"]
+            a(f"| {r['workers']} | {r['concurrency']} | {r['requests']:,} | {r['errors']} | {r['throughput_rps']} | "
+              f"{L_['p50']} / {L_['p95']} / {L_['p99']} |")
+    sm = load("smoke_stack_real.json", False)
+    if sm and "rollback_seconds_flip_reload_confirmed" in sm:
+        a(f"\n**Container smoke test on the real stack** (`reports/smoke_stack_real.json`): TLS proxy, authentication, audit row, blocked operational "
+          f"endpoints, Prometheus and Grafana all checked. Measured rollback (alias flip, API reload, new version observed): "
+          f"{sm['rollback_seconds_flip_reload_confirmed']} s; roll-forward: {sm['roll_forward_seconds']} s.")
+    bd = load("backup_drill.json", False)
+    if bd:
+        a(f"\n**Backup/restore drill on the real database** (`reports/backup_drill.json`): {'PASSED' if bd['passed'] else 'FAILED'}; "
+          f"irreproducible data only (audit, registry, lineage, marts), dump {bd['dump_mb']:.1f} MB, backup {bd['backup_seconds']:.1f} s, "
+          f"restore and verification {bd['restore_verify_seconds']:.1f} s, all table row counts equal.")
     fa = load("failure_analysis.json", False)
     if fa:
         a("\n**Where the champion is weaker: segment analysis on the test split** (descriptive only; `reports/failure_analysis.json`; "

@@ -16,6 +16,10 @@ import sys
 import time
 from pathlib import Path
 
+# Orchestrator telemetry writes to its own sqlite store and logged scary-looking (harmless) lock errors during runs.
+os.environ.setdefault("DO_NOT_TRACK", "1")
+os.environ.setdefault("PREFECT_SERVER_ANALYTICS_ENABLED", "false")
+
 from prefect import flow, get_run_logger, task
 
 from . import config

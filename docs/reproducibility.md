@@ -8,6 +8,11 @@ Prerequisites: Docker, Python 3.13, the Kaggle Home Credit CSVs in `data/raw/`, 
 | Source validation + raw lock | `python -m creditrisk.ingest --validate-only` | `data/raw/MANIFEST.sha256` |
 | Ingest, dbt build, train, register, promotion decision | `python -m creditrisk.flows` | `reports/runtime.json`, `reports/metrics.json`, MLflow |
 | Raw load timing (real COPY time) | `python scripts/export_ingest_stats.py` | `reports/ingest_load.json` |
+| Same pipeline in a container | `GIT_COMMIT=$(git rev-parse HEAD) docker compose --profile pipeline run --rm pipeline` | same outputs |
+| Segment failure analysis | `python scripts/failure_analysis.py` | `reports/failure_analysis.json` |
+| Concurrent load test | `python scripts/load_test.py` | `reports/load_test.json` |
+| Container E2E on the real stack (TLS, rollback timing) | `python scripts/smoke_stack.py --real` | `reports/smoke_stack_real.json` |
+| Backup/restore drill | `python scripts/backup_restore.py drill` | `reports/backup_drill.json` |
 | Feature lineage doc | `python scripts/gen_feature_lineage.py` | `docs/feature_lineage.md` |
 | Champion/challenger/rollback drill | `python scripts/lifecycle_demo.py` | `reports/lifecycle_demo.json`, `reports/model_decisions.jsonl` |
 | Global SHAP | `python scripts/explain_global.py` | `reports/shap_global_importance.*` |

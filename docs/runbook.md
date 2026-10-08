@@ -9,7 +9,14 @@ python -c "import secrets,hashlib;k=secrets.token_urlsafe(24);print('KEY (give t
 ```
 
 Put the hash (comma-separate several for rotation) in `.env` as `API_KEY_SHA256S`. The API refuses to start without it.
-`/predict` and `/model` require `X-API-Key`; `/health`, `/ready`, `/metrics` do not (restrict `/metrics` at the network layer).
+`/predict` and `/model` require `X-API-Key`; `/health` and `/ready` do not. Each key is rate-limited (token bucket, `RATE_LIMIT_PER_MINUTE`, per API process:
+with several workers the effective limit is per worker). Over the limit the API answers `429` with `Retry-After`.
+
+## Network entry and TLS
+
+Public traffic goes through the Caddy proxy (`https://localhost:${TLS_PORT:-8443}`) with a certificate from Caddy's local CA (development-grade; use a real host name and a
+publicly trusted certificate, or your load balancer, for anything else). The proxy answers `404` for `/admin/*` and `/metrics`. The API's own port is bound to the host loopback only,
+so operational calls are made from the host: `curl -X POST localhost:8000/admin/reload -H "x-admin-token: $ADMIN_TOKEN"`. Prometheus scrapes the API inside the compose network.
 
 ## Promote a model
 
@@ -42,8 +49,9 @@ re-download the original, or move the new file to a new name and add a new contr
 ## Backup and restore
 
 ```bash
-python scripts/backup_restore.py backup
-python scripts/backup_restore.py drill      # backup -> restore into a scratch DB -> compares row counts of audit/meta/marts
+python scripts/backup_restore.py backup           # irreproducible data only (audit, MLflow registry, lineage, marts)
+python scripts/backup_restore.py backup --full    # also raw/staging/intermediate (multi-gigabyte)
+python scripts/backup_restore.py drill            # backup -> restore into a scratch DB -> compares table row counts
 ```
 
 Derived schemas (staging, intermediate, marts) are rebuilt from raw with `dbt build`; the **audit trail and MLflow registry are not reproducible** and

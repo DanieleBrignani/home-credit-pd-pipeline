@@ -1,0 +1,24 @@
+# TLS termination for the scoring API. `tls internal` = certificates from Caddy's own local CA: encrypted transport for
+# development/staging, NOT a publicly trusted certificate. For real use, put a real hostname here and let Caddy obtain a
+# public certificate (or terminate TLS at your load balancer).
+{
+	auto_https disable_redirects
+}
+
+localhost:8443 {
+	tls internal
+
+	# Operational endpoints are reachable only from inside the compose network / the host loopback binding of the api service.
+	@internal path /admin/* /metrics
+	respond @internal 404
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+	request_body {
+		max_size 64KB
+	}
+	reverse_proxy api:8000
+}

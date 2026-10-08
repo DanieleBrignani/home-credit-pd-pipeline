@@ -10,18 +10,21 @@ import hashlib
 import hmac
 import logging
 import os
+import threading
 import time
 import uuid
 from datetime import datetime, timezone
 from typing import Literal, Optional
 
 import pandas as pd
-from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi.exceptions import RequestValidationError
+from fastapi.exception_handlers import request_validation_exception_handler
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel, ConfigDict, Field
 
 from . import config, explain
-from .audit import AuditRecord, MemoryAudit, PostgresAudit
+from .audit import AuditRecord, MemoryAudit, PostgresAudit, make_pool
 from .features import FEATURE_COLUMNS, HISTORY_COLUMNS, build_features, feature_schema_version
 from .monitoring import Metrics
 
@@ -98,8 +101,7 @@ class MlflowModelStore:
 
 class PostgresFeatureStore:
     def __init__(self, dsn: str):
-        from psycopg2.pool import ThreadedConnectionPool
-        self.pool = ThreadedConnectionPool(1, 5, dsn)
+        self.pool = make_pool(dsn)
 
     def get(self, sk_id_curr: int) -> Optional[dict]:
         conn = self.pool.getconn()
@@ -126,7 +128,8 @@ def hash_api_key(key: str) -> str:
 
 
 def create_app(model_store=None, feature_store=None, audit=None, admin_token: str | None = None,
-               api_key_hashes: list[str] | None = None, allow_unauthenticated: bool = False) -> FastAPI:
+               api_key_hashes: list[str] | None = None, allow_unauthenticated: bool = False,
+               rate_limit_per_minute: int | None = None) -> FastAPI:
     app = FastAPI(title="Home Credit PD scoring API", version="0.1.0",
                   description="Estimates probability of default. Not an autonomous lending decision system.")
     metrics = Metrics()
@@ -139,13 +142,42 @@ def create_app(model_store=None, feature_store=None, audit=None, admin_token: st
         # fail closed at startup rather than silently serving scores to anyone
         raise RuntimeError("API_KEY_SHA256S is not configured (set ALLOW_UNAUTHENTICATED=1 only for local experiments)")
 
+    rpm = rate_limit_per_minute if rate_limit_per_minute is not None else int(os.getenv("RATE_LIMIT_PER_MINUTE", "1200"))
+    buckets: dict[str, list[float]] = {}   # key digest -> [tokens, last_refill]; per-process (see docs: not shared across workers)
+    bucket_lock = threading.Lock()
+
+    def _take_token(identity: str) -> float | None:
+        """Token bucket per API key: capacity = rpm, refill = rpm/60 per second. Returns seconds to wait if empty."""
+        if rpm <= 0:
+            return None
+        now = time.monotonic()
+        with bucket_lock:
+            tokens, last = buckets.get(identity, [float(rpm), now])
+            tokens = min(float(rpm), tokens + (now - last) * rpm / 60.0)
+            if tokens < 1.0:
+                buckets[identity] = [tokens, now]
+                return (1.0 - tokens) * 60.0 / rpm
+            buckets[identity] = [tokens - 1.0, now]
+            return None
+
     def require_key(x_api_key: str = Header(default="")):
         if allow_unauthenticated and not api_key_hashes:
-            return
-        digest = hash_api_key(x_api_key)
-        if not any(hmac.compare_digest(digest, h) for h in api_key_hashes):
-            metrics.requests.labels("auth", "401").inc()
-            raise HTTPException(401, "missing or invalid API key")
+            identity = "anonymous"
+        else:
+            digest = hash_api_key(x_api_key)
+            if not any(hmac.compare_digest(digest, h) for h in api_key_hashes):
+                metrics.requests.labels("auth", "401").inc()
+                raise HTTPException(401, "missing or invalid API key")
+            identity = digest
+        wait = _take_token(identity)
+        if wait is not None:
+            metrics.requests.labels("auth", "429").inc()
+            raise HTTPException(429, "rate limit exceeded", headers={"Retry-After": str(max(1, int(wait + 0.999)))})
+
+    @app.exception_handler(RequestValidationError)
+    async def _validation(request: Request, exc: RequestValidationError):
+        metrics.requests.labels(request.url.path, "422").inc()
+        return await request_validation_exception_handler(request, exc)
 
     def _load():
         model_store_ = model_store or MlflowModelStore("credit-risk-pd", os.getenv("MODEL_ALIAS", "champion"))

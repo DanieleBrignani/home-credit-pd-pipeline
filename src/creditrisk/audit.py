@@ -27,6 +27,13 @@ revoke update, delete on audit.predictions from public;
 """
 
 
+def make_pool(dsn: str, maxconn: int = 20):
+    """Bounded Postgres pool with a connect timeout and a per-statement timeout so a slow database fails fast
+    (the API then answers 5xx / withholds the score) instead of piling up requests."""
+    from psycopg2.pool import ThreadedConnectionPool
+    return ThreadedConnectionPool(1, maxconn, dsn, connect_timeout=3, options="-c statement_timeout=3000")
+
+
 @dataclass
 class AuditRecord:
     prediction_id: str
@@ -49,8 +56,7 @@ def applicant_hash(applicant_id: int, salt: str | None = None) -> str:
 
 class PostgresAudit:
     def __init__(self, dsn: str):
-        from psycopg2.pool import ThreadedConnectionPool
-        self.pool = ThreadedConnectionPool(1, 5, dsn)
+        self.pool = make_pool(dsn)
         conn = self.pool.getconn()
         try:
             conn.cursor().execute(DDL); conn.commit()

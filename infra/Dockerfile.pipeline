@@ -1,0 +1,15 @@
+# Batch pipeline runner: validate -> ingest -> dbt build -> train -> register -> promotion decision.
+# Run:  GIT_COMMIT=$(git rev-parse HEAD) docker compose --profile pipeline run --rm pipeline
+FROM python:3.13-slim
+ENV PYTHONUNBUFFERED=1 PYTHONUTF8=1 PIP_NO_CACHE_DIR=1 RAW_DIR=/data/raw
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
+COPY pyproject.toml /app/
+COPY src /app/src
+COPY dbt /app/dbt
+COPY scripts /app/scripts
+COPY docs /app/docs
+RUN pip install --no-deps -e .
+ENTRYPOINT ["python", "-m", "creditrisk.flows"]

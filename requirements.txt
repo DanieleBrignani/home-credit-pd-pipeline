@@ -19,3 +19,4 @@ pyyaml>=6
 joblib>=1.4
 matplotlib>=3.9
 tabulate
+pytest-cov

@@ -164,3 +164,23 @@ def test_app_refuses_to_start_without_auth_configuration(monkeypatch):
 def test_health_and_metrics_stay_open_for_probes(client):
     anon = TestClient(client.app)
     assert anon.get("/health").status_code == 200 and anon.get("/metrics").status_code == 200
+
+
+def test_rate_limit_per_key_returns_429_with_retry_after(tiny_models):
+    models, _ = tiny_models
+    app = api.create_app(FakeStore(models["logreg"]), api.MemoryFeatureStore(), MemoryAudit(),
+                         api_key_hashes=[api.hash_api_key(KEY), api.hash_api_key("other-key")], rate_limit_per_minute=3)
+    with TestClient(app) as c:
+        codes = [c.post("/predict", json=APPLICANT, headers=HDR).status_code for _ in range(5)]
+        assert codes[:3] == [200, 200, 200] and codes[3:] == [429, 429]
+        r = c.post("/predict", json=APPLICANT, headers=HDR)
+        assert r.status_code == 429 and int(r.headers["retry-after"]) >= 1
+        # a different key has its own bucket
+        assert c.post("/predict", json=APPLICANT, headers={"x-api-key": "other-key"}).status_code == 200
+        assert 'status="429"' in c.get("/metrics").text
+
+
+def test_validation_failures_are_counted_in_metrics(client):
+    bad = {**APPLICANT, "application": {**APPLICANT["application"], "amt_income_total": -5}}
+    assert client.post("/predict", json=bad).status_code == 422
+    assert 'status="422"' in client.get("/metrics").text

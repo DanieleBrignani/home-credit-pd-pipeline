@@ -26,6 +26,8 @@ def pg_dsn() -> str:
 
 
 def git_commit() -> str:
+    if os.getenv("GIT_COMMIT"):          # set by the pipeline container, which has no .git directory
+        return os.environ["GIT_COMMIT"]
     try:
         out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True, text=True, check=True)
         dirty = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT, capture_output=True, text=True).stdout.strip()
