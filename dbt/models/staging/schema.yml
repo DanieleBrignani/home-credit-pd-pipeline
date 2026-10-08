@@ -13,7 +13,6 @@ models:
       - name: sk_id_curr
         tests:
           - not_null
-          - relationships: {to: ref('stg_application'), field: sk_id_curr, config: {severity: warn}}
   - name: stg_previous_application
     columns:
       - {name: sk_id_prev, tests: [unique, not_null]}

@@ -1,0 +1,37 @@
+{
+  "tables": {
+    "application_train": {
+      "rows": 307511,
+      "load_seconds": 11.429988145828247
+    },
+    "application_test": {
+      "rows": 48744,
+      "load_seconds": 1.8010609149932861
+    },
+    "bureau": {
+      "rows": 1716428,
+      "load_seconds": 23.052194833755493
+    },
+    "bureau_balance": {
+      "rows": 27299925,
+      "load_seconds": 119.03967380523682
+    },
+    "previous_application": {
+      "rows": 1670214,
+      "load_seconds": 7.876164436340332
+    },
+    "installments_payments": {
+      "rows": 13605401,
+      "load_seconds": 33.67306447029114
+    },
+    "credit_card_balance": {
+      "rows": 3840312,
+      "load_seconds": 28.244871139526367
+    },
+    "POS_CASH_balance": {
+      "rows": 10001358,
+      "load_seconds": 107.03224587440491
+    }
+  },
+  "total_load_seconds": 332.1492636203766
+}

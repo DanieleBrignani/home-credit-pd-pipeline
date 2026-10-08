@@ -4,7 +4,7 @@
 
 Reasons, in order of weight:
 
-1. **The headline requirement is unmet.** "Rebuild from raw files, train, evaluate, register, serve, monitor and reproduce reported metrics" has been demonstrated only on small *test-only fixtures*. The real Home Credit files are licence-gated and absent, so **no model metric, runtime on real data, or inference benchmark on a real model exists**, and the README results block is deliberately empty rather than invented.
+1. **Results exist now, but only from one machine and one run.** The pipeline has been run end to end on the real Home Credit files (row counts match the published counts), and the README results are generated from `reports/*.json`. They come from a single laptop run, recorded at commit `5980d74` plus uncommitted fixes to dbt tests, compose and scripts (none touch features or the model). No second environment, CI runner or independent reviewer has reproduced them, and see category 28 for the reproduction check.
 2. Most categories below are `PARTIAL`: the mechanism exists and is tested, but it has never run against real data, real traffic, a remote CI runner, or a real incident.
 3. One category (`Scalability`) is `FAIL`, and several `PARTIAL`s contain known gaps (no TLS, no secret manager, no off-machine backups).
 
@@ -53,7 +53,7 @@ Also fixed: concurrent-loader race (Postgres advisory lock in ingest), silent sc
 | 20 | Observability | PARTIAL | |
 | 21 | SLIs | PARTIAL | |
 | 22 | SLOs | PARTIAL | |
-| 23 | Performance | PARTIAL | |
+| 23 | Performance | PASS | |
 | 24 | Scalability | **FAIL** | |
 | 25 | Recovery | PARTIAL | yes |
 | 26 | Rollback | PASS | yes |
@@ -69,7 +69,8 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 - **Requirement:** ingested files are the canonical public files, verifiably unaltered.
 - **Evidence:** `ingest.validate_file` checks required columns, duplicate headers, sha256 against `MANIFEST.sha256`; `load_table` checks published row counts (`contracts.py`). `meta.ingest_batches` records sha256/rows/commit.
 - **Test:** `tests/test_contracts_metrics.py` (missing file/column, duplicate header, manifest lock, mutation detected); `test_integration.py::test_raw_loaded_verbatim_and_lineage_recorded`.
-- **Limitation:** the lock is trust-on-first-use — Kaggle publishes no checksum we compare against, so a corrupted first download is locked in; row counts are the only external reference. Never run on the real files.
+- **Real-data evidence:** all eight real files passed the contract and their row counts equal the published counts exactly (`meta.ingest_batches`; `reports/metrics.json` records `CANONICAL`).
+- **Limitation:** the lock is trust-on-first-use — Kaggle publishes no checksum we compare against, so a corrupted first download would be locked in; row counts are the only external reference.
 - **Required improvement:** record known-good checksums from a second independent download; run on the real files.
 
 ## 2. Raw data immutability — PARTIAL
@@ -118,8 +119,9 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 - **Requirement:** automated checks on content, failing the pipeline when violated.
 - **Evidence:** dbt tests (unique/not-null/accepted values/relationships) plus singular tests (shares in [0,1], non-negative counts, plausible default rate, no orphan history); dbt failures stop the flow (non-retryable).
 - **Test:** `dbt build` on fixtures; pipeline run on fixtures.
-- **Limitation:** thresholds untested on real data; no anomaly/volume monitoring across loads.
-- **Required improvement:** run on real data, calibrate thresholds, add freshness and volume checks.
+- **Real-data evidence:** on the real data the dbt tests initially **failed**: one on container shared memory, and one test of mine that wrongly assumed the history tables cover only training applicants. After fixing both, the full dbt build ran on the real data (about 7 minutes) and passed.
+- **Limitation:** the plausibility thresholds were written before seeing the data and not tuned; no anomaly/volume monitoring across loads.
+- **Required improvement:** add freshness and volume checks; review thresholds with the data owner.
 
 ## 9. Orchestration — PARTIAL
 - **Requirement:** a scheduled, observable, dependency-ordered pipeline.
@@ -222,9 +224,10 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 ## 23. Performance — PARTIAL
 - **Requirement:** measured latency/throughput of the real stack.
 - **Evidence:** `scripts/benchmark_inference.py` measures p50/p95/p99 through uvicorn with real DB lookup and audit write, using test-split applicants; `make_results.py` publishes them.
-- **Test:** script executes against the registry champion (not yet run on a real model).
-- **Limitation:** **no performance number exists yet**; single client, single worker; training-time/feature-pipeline-time on real data not measured.
-- **Required improvement:** run on real data; add concurrent-load profile.
+- **Real-data evidence:** the benchmark ran against the real champion with real test-split applicants: 2000 sequential requests, no errors; latencies and the feature-pipeline and training times are in the README results block (from `reports/inference_benchmark.json`, `reports/runtime.json`, `reports/metrics.json`).
+- **Test:** `python scripts/benchmark_inference.py` (re-runnable).
+- **Limitation:** single client, single uvicorn worker, loopback, one laptop; no concurrent-load profile, so it measures latency, not capacity. The synchronous audit insert and the SHAP-free path are included; explanations are not benchmarked.
+- **Required improvement:** concurrent-load test and a latency budget breakdown (validation, DB lookup, feature build, model, audit).
 
 ## 24. Scalability — FAIL
 - **Requirement:** demonstrated handling of larger data and request volumes.
@@ -244,8 +247,9 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 - **Requirement:** champion/challenger, promotion decision, rollback mechanism.
 - **Evidence:** MLflow aliases (`champion`, `challenger`, `previous_champion`); promotion rule with explicit gates in `registry.py`; every decision logged to `reports/model_decisions.jsonl`; rollback by alias repoint plus `/admin/reload`; `scripts/lifecycle_demo.py` runs a rollback drill.
 - **Test:** `tests/test_registry.py` (promotion gates, bootstrap-then-challenge lifecycle, rollback, rollback-without-target).
-- **Limitation:** the drill on real model versions has not run; rollback of *data/feature* changes is "rebuild from raw", not instant.
-- **Required improvement:** run the drill on real versions; measure time-to-rollback.
+- **Real-data evidence:** on the real registered versions the baseline was bootstrapped as champion, the LightGBM challenger passed every gate and was promoted, and the rollback drill moved champion to the previous version and rolled forward again (`reports/lifecycle_demo.json`, `reports/model_decisions.jsonl`).
+- **Limitation:** rollback of *data/feature* changes is "rebuild from raw", not instant; time-to-rollback was not measured; the API reload after rollback was exercised only in the fixture smoke test.
+- **Required improvement:** measure time-to-rollback including API reload on the real stack.
 
 ## 27. Documentation — PARTIAL
 - **Requirement:** accurate docs for operators and reviewers.
@@ -256,10 +260,10 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 
 ## 28. Reproducibility — PARTIAL
 - **Requirement:** same inputs and code give the same features and metrics.
-- **Evidence:** hash split, deterministic LightGBM with a fixed seed, `requirements.lock`, bit-identical feature rebuild (fixtures), `scripts/reproduce_check.py` re-trains and compares metrics to `1e-6`, `scripts/verify_readme_numbers.py` ties README numbers to `reports/*.json`.
-- **Test:** `test_feature_rebuild_is_bit_identical`; the two scripts (they fail until real results exist — by design).
-- **Limitation:** **never run on real data**, so the stated "done when" condition is not met; lock file is Windows/Python 3.13-specific; timings are not reproducible bit-for-bit.
-- **Required improvement:** run the whole chain on the real files; add a Linux lock and a CI reproduction job on a licence-cleared sample.
+- **Evidence (real data, this machine):** (a) a second full `dbt build` from the raw tables gave a feature-table fingerprint identical to the one recorded in `reports/metrics.json`; (b) `scripts/reproduce_check.py` re-trained both models from the recorded seed and configuration and matched the dataset version, the feature fingerprint, and every validation and test metric to 1e-6 (`artifacts/reproduce_check.log`, `artifacts/reproduce_metrics.json`). Supporting: hash split, deterministic LightGBM, `requirements.lock`, `scripts/verify_readme_numbers.py` ties every README number to `reports/*.json`.
+- **Test:** `test_feature_rebuild_is_bit_identical` (fixtures), plus the two real-data runs above.
+- **Limitation:** all reproduction was on one machine with the same library versions; the first reproduction attempt crashed on Windows temp-file cleanup (fixed) before comparing, so it was repeated; the lock file is Windows/Python 3.13 specific; timings are not reproducible bit-for-bit; the raw files were not re-ingested from an independent download; the committed code differs from the code that produced the results only by uncommitted dbt-test, compose and script fixes.
+- **Required improvement:** reproduce on a second OS/CI runner from a Linux lock; re-download the data independently and compare checksums; commit a clean tree and re-run so metrics carry a clean commit hash.
 
 ## 29. Cost awareness — PARTIAL
 - **Requirement:** cost drivers identified and measurable.
@@ -280,10 +284,11 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 
 ## Evidence snapshot
 
-Recorded at the time of writing (all on fixture data, none are model results):
+Recorded at the time of writing:
 
-- `pytest -q`: **96 passed** (unit, leakage, registry, API E2E, results-tooling, and DB integration tests); log in `artifacts/pytest_final.log`.
-- `dbt build` on the fixture database: 44 of 44 models and tests passed.
-- `scripts/smoke_stack.py`: `SMOKE PASSED` (`artifacts/smoke_stack.json`).
-- `scripts/backup_restore.py drill`: `RESTORE DRILL PASSED`.
-- `scripts/verify_readme_numbers.py`: currently **fails by design** (no `reports/metrics.json`); prose numbers are already clean.
+- `pytest -q`: **96 passed** (unit, leakage, registry, in-process API E2E, results tooling, and DB integration tests on fixtures); log in `artifacts/pytest_final.log`.
+- Real data: all eight files passed the contract with row counts equal to the published counts; the full `dbt build` on the real data passed twice (42 passed, 1 warning, 0 errors on the second run; the warning is the relationship check of bureau-balance rows against bureau).
+- Real data: training, selection on validation, a single test scoring, registration, promotion and the rollback drill, SHAP, drift simulation, segment analysis and the inference benchmark all ran; outputs are in `reports/`.
+- Reproduction: second `dbt build` gave an identical feature fingerprint; `scripts/reproduce_check.py` printed `REPRODUCED within tolerance 1e-06`.
+- `scripts/verify_readme_numbers.py`: `OK` (blocks equal regenerated output; no unregistered numbers in prose).
+- Fixture-only evidence (wiring, not model quality): `scripts/smoke_stack.py` `SMOKE PASSED`; `scripts/backup_restore.py drill` `RESTORE DRILL PASSED`. These were not repeated on the real database.

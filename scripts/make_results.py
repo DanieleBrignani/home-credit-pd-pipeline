@@ -74,8 +74,9 @@ def render_block() -> tuple[str, str]:
     a(f"| LightGBM random search ({m['run_config']['n_iter']} configs) | {mod['lightgbm']['fit_seconds']:.0f} s | same |")
     if "feature_pipeline_dbt_build" in rt:
         a(f"| feature pipeline (dbt build: staging, intermediate, marts, tests) | {rt['feature_pipeline_dbt_build']['seconds']:.0f} s | `reports/runtime.json` |")
-    if "ingest" in rt:
-        a(f"| raw ingest (COPY into Postgres) | {rt['ingest']['seconds']:.0f} s | `reports/runtime.json` |")
+    ing = load("ingest_load.json", False)
+    if ing:
+        a(f"| raw ingest, 8 files COPY into Postgres (sum of per-file load time) | {ing['total_load_seconds']:.0f} s | `reports/ingest_load.json` |")
     if bench:
         b = bench["client_latency_ms"]
         a(f"| `/predict` latency p50 / p95 / p99 | {b['p50']:.1f} / {b['p95']:.1f} / {b['p99']:.1f} ms | `reports/inference_benchmark.json` |")
@@ -89,9 +90,10 @@ def render_block() -> tuple[str, str]:
             blk = drift[k]
             worst = max(v["psi"] for kk, v in blk.items() if isinstance(v, dict))
             a(f"| {k} | {f(blk['score']['psi'],5)} | {f(worst,5)} |")
-        a("\n| INJECTED perturbation (synthetic, not observed) | score PSI | status |\n|---|---|---|")
+        a("\n| INJECTED perturbation (synthetic, not observed) | score PSI | score status | worst feature PSI | flagged by feature PSI (> 0.25)? |\n|---|---|---|---|---|")
         for k, v in drift["injected_shift_detection"].items():
-            a(f"| {k} | {f(v['score_psi'],4)} | {v['score_status']} |")
+            ff, fv = max(v["feature_psi"].items(), key=lambda kv: kv[1])
+            a(f"| {k} | {f(v['score_psi'],4)} | {v['score_status']} | {ff} = {f(fv,3)} | {'yes' if fv > 0.25 else 'no'} |")
     if life:
         a("\n**Champion / challenger / rollback drill** (`reports/lifecycle_demo.json`, decisions in `reports/model_decisions.jsonl`)\n")
         for d in life["decision_history"]:
@@ -104,6 +106,16 @@ def render_block() -> tuple[str, str]:
             a(f"- rollback drill: champion v{rb['from']} -> v{rb['to']}, then rolled forward to v{life['roll_forward']['to']}")
         else:
             a(f"- rollback drill: {rb}")
+    fa = load("failure_analysis.json", False)
+    if fa:
+        a("\n**Where the champion is weaker: segment analysis on the test split** (descriptive only; `reports/failure_analysis.json`; "
+          "AUC shown only for segments with enough rows and both classes)\n")
+        a("| segment | n | observed default rate | mean predicted PD | predicted / observed | ROC-AUC |\n|---|---|---|---|---|---|")
+        for col, rows in fa["segments"].items():
+            for r in rows:
+                cr = "n/a" if r["calibration_ratio"] is None else f"{r['calibration_ratio']:.2f}"
+                au = "n/a" if r["roc_auc"] is None else f"{r['roc_auc']:.3f}"
+                a(f"| {col}: {r['segment']} | {r['n']:,} | {r['default_rate']*100:.1f}% | {r['mean_pd']*100:.1f}% | {cr} | {au} |")
     readme_block = "\n".join(L)
 
     k = [f"Measured on the real Home Credit data, selected model `{sel}`, held-out test split "

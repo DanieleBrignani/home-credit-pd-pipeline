@@ -12,6 +12,8 @@ validate:      ## source validation only (contracts + sha256 lock)
 	$(PY) -m creditrisk.ingest --raw-dir $(RAW) --validate-only
 pipeline:      ## validate -> ingest -> dbt build -> train -> register -> promotion decision (Prefect flow)
 	$(PY) -m creditrisk.flows --raw-dir $(RAW)
+ingeststats:
+	$(PY) scripts/export_ingest_stats.py
 lineage:
 	$(PY) scripts/gen_feature_lineage.py
 test:          ## unit + e2e (no DB needed) and integration (needs Postgres)
@@ -30,4 +32,4 @@ verify:
 	$(PY) scripts/verify_readme_numbers.py
 reproduce:
 	$(PY) scripts/reproduce_check.py
-all-real: up validate pipeline lifecycle shap drift benchmark results verify reproduce
+all-real: up validate pipeline ingeststats lifecycle shap drift benchmark results verify reproduce

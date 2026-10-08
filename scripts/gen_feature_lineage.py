@@ -104,6 +104,9 @@ def main() -> None:
       "reported performance is an in-time estimate and will be optimistic relative to a genuine out-of-time deployment.")
     a("- **Snapshot semantics of bureau amounts.** `AMT_CREDIT_SUM_DEBT` etc. are documented as of the application; we cannot verify "
       "from the data that none were refreshed later.")
+    a("- **Orphan bureau-balance rows.** On the real data a large block of `bureau_balance` rows references an `SK_ID_BUREAU` that is absent "
+      "from `bureau`. They cannot be attributed to an applicant, so the inner path through `bureau` drops them; the dbt relationship test reports "
+      "them as a warning. Bureau delinquency features therefore describe only the credits that are present in `bureau`.")
     a("- **`EXT_SOURCE_*`** are third-party scores of undisclosed construction; they are available at application time but their own "
       "lineage is opaque and they dominate the model. Dependence on them is a governance risk.")
     a("- **Age (`days_birth`)** is retained as an underwriting input; use of age may be restricted by regulation in some jurisdictions. "

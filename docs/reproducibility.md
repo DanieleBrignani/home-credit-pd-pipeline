@@ -7,6 +7,7 @@ Prerequisites: Docker, Python 3.13, the Kaggle Home Credit CSVs in `data/raw/`, 
 | Postgres | `docker compose up -d postgres` | volume `pgdata` |
 | Source validation + raw lock | `python -m creditrisk.ingest --validate-only` | `data/raw/MANIFEST.sha256` |
 | Ingest, dbt build, train, register, promotion decision | `python -m creditrisk.flows` | `reports/runtime.json`, `reports/metrics.json`, MLflow |
+| Raw load timing (real COPY time) | `python scripts/export_ingest_stats.py` | `reports/ingest_load.json` |
 | Feature lineage doc | `python scripts/gen_feature_lineage.py` | `docs/feature_lineage.md` |
 | Champion/challenger/rollback drill | `python scripts/lifecycle_demo.py` | `reports/lifecycle_demo.json`, `reports/model_decisions.jsonl` |
 | Global SHAP | `python scripts/explain_global.py` | `reports/shap_global_importance.*` |

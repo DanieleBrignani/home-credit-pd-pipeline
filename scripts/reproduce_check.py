@@ -21,12 +21,15 @@ def main() -> int:
     from creditrisk import train
 
     ref = json.loads((ROOT / "reports" / "metrics.json").read_text())
-    with tempfile.TemporaryDirectory() as tmp:
+    # ignore_cleanup_errors: on Windows the sqlite file can still be held open by MLflow when the directory is removed
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmp:
         os.environ["MLFLOW_TRACKING_URI"] = f"sqlite:///{Path(tmp, 'm.db').as_posix()}"
         out = Path(tmp) / "metrics.json"
         rc = train.main(["--n-iter", str(ref["run_config"]["n_iter"]), "--seed", str(ref["run_config"]["seed"]),
                          "--out", str(out), "--no-register"])
         new = json.loads(out.read_text())
+        (ROOT / "artifacts").mkdir(exist_ok=True)
+        (ROOT / "artifacts" / "reproduce_metrics.json").write_text(json.dumps(new, indent=2))
     bad = []
     if new["feature_table_fingerprint"] != ref["feature_table_fingerprint"]:
         bad.append("feature_table_fingerprint differs")

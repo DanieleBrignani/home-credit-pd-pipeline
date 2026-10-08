@@ -1,0 +1,23 @@
+{
+  "n_requests": 2000,
+  "errors": 0,
+  "model_version": "2",
+  "model_family": "lightgbm",
+  "client_latency_ms": {
+    "p50": 77.33375002862886,
+    "p95": 188.01494499202818,
+    "p99": 218.8214059441816,
+    "mean": 90.82787240028847,
+    "max": 488.99509996408597
+  },
+  "sequential_throughput_rps": 11.009592381500397,
+  "conditions": {
+    "client": "single sequential httpx client over loopback",
+    "includes": "pydantic validation, Postgres feature lookup, feature build, model inference, synchronous audit insert, JSON response",
+    "host": "Windows-11-10.0.26200-SP0",
+    "python": "3.13.3",
+    "cpu_count": 16,
+    "uvicorn_workers": 1,
+    "payloads": "random real applicants from the held-out test split"
+  }
+}

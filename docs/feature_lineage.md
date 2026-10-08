@@ -163,6 +163,7 @@ Three classes were audited explicitly.
 
 - **No absolute dates.** Home Credit provides only relative days, so true point-in-time reconstruction cannot be verified; the guards rely on the dataset's own relative-day semantics. Train/valid/test is a *deterministic hash split*, not a time split, so reported performance is an in-time estimate and will be optimistic relative to a genuine out-of-time deployment.
 - **Snapshot semantics of bureau amounts.** `AMT_CREDIT_SUM_DEBT` etc. are documented as of the application; we cannot verify from the data that none were refreshed later.
+- **Orphan bureau-balance rows.** On the real data a large block of `bureau_balance` rows references an `SK_ID_BUREAU` that is absent from `bureau`. They cannot be attributed to an applicant, so the inner path through `bureau` drops them; the dbt relationship test reports them as a warning. Bureau delinquency features therefore describe only the credits that are present in `bureau`.
 - **`EXT_SOURCE_*`** are third-party scores of undisclosed construction; they are available at application time but their own lineage is opaque and they dominate the model. Dependence on them is a governance risk.
 - **Age (`days_birth`)** is retained as an underwriting input; use of age may be restricted by regulation in some jurisdictions. `CODE_GENDER` is excluded. No fairness audit has been performed.
 - **Presence flags** (`has_*_history`) reflect data-provider coverage and could proxy for population segments.

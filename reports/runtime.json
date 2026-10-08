@@ -1,0 +1,14 @@
+{
+  "ingest": {
+    "seconds": 6.89,
+    "finished_utc": "2026-10-08T20:25:12Z"
+  },
+  "feature_pipeline_dbt_build": {
+    "seconds": 421.37,
+    "finished_utc": "2026-10-08T20:32:14Z"
+  },
+  "training_total": {
+    "seconds": 1640.29,
+    "finished_utc": "2026-10-08T21:00:09Z"
+  }
+}

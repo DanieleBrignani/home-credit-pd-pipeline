@@ -2,6 +2,7 @@ name: creditrisk
 services:
   postgres:
     image: postgres:16
+    shm_size: 2gb   # parallel query workers need /dev/shm; the 64MB default fails on the 27M-row table tests
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-creditrisk}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
