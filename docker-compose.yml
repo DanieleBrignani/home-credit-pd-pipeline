@@ -1,0 +1,61 @@
+name: creditrisk
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-creditrisk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-creditrisk}
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    command: ["postgres", "-c", "shared_buffers=1GB", "-c", "work_mem=128MB", "-c", "max_wal_size=4GB"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-creditrisk}"]
+      interval: 5s
+      retries: 20
+
+  mlflow:
+    build: {context: ., dockerfile: infra/Dockerfile.mlflow}
+    environment:
+      MLFLOW_BACKEND: postgresql://${POSTGRES_USER:-creditrisk}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-creditrisk}
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri postgresql://${POSTGRES_USER:-creditrisk}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-creditrisk}
+      --artifacts-destination /mlartifacts --serve-artifacts
+    ports: ["${MLFLOW_PORT:-5000}:5000"]
+    volumes: ["mlartifacts:/mlartifacts"]
+    depends_on: {postgres: {condition: service_healthy}}
+
+  api:
+    build: {context: ., dockerfile: infra/Dockerfile.api}
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: ${POSTGRES_USER:-creditrisk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-creditrisk}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      AUDIT_HASH_SALT: ${AUDIT_HASH_SALT:?set AUDIT_HASH_SALT in .env}
+      MODEL_ALIAS: champion
+      API_KEY_SHA256S: ${API_KEY_SHA256S:?set API_KEY_SHA256S in .env (sha256 of the API key; see docs/runbook.md)}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
+    ports: ["${API_PORT:-8000}:8000"]
+    depends_on: {postgres: {condition: service_healthy}, mlflow: {condition: service_started}}
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes: ["./infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro", "./infra/alerts.yml:/etc/prometheus/alerts.yml:ro"]
+    ports: ["${PROMETHEUS_PORT:-9090}:9090"]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["${GRAFANA_PORT:-3000}:3000"]
+    depends_on: [prometheus]
+
+volumes:
+  pgdata:
+  mlartifacts:

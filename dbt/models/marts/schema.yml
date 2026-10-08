@@ -1,0 +1,17 @@
+version: 2
+models:
+  - name: applicant_history_features
+    description: One row per applicant (online feature lookup table). Grain asserted unique.
+    columns:
+      - {name: sk_id_curr, tests: [unique, not_null]}
+  - name: training_dataset
+    description: One row per labeled applicant with split assignment.
+    columns:
+      - {name: sk_id_curr, tests: [unique, not_null]}
+      - name: split
+        tests:
+          - not_null
+          - accepted_values: {values: ['train', 'valid', 'test']}
+      - name: target
+        tests:
+          - not_null

@@ -1,0 +1,38 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: {POSTGRES_USER: creditrisk, POSTGRES_PASSWORD: ci_only_password, POSTGRES_DB: creditrisk_test}
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U creditrisk" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      POSTGRES_USER: creditrisk
+      POSTGRES_PASSWORD: ci_only_password
+      POSTGRES_HOST: localhost
+      POSTGRES_DB: creditrisk_test
+      TEST_POSTGRES_DB: creditrisk_test
+      AUDIT_HASH_SALT: ci_only_salt
+      DBT_PROFILES_DIR: dbt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.13", cache: pip}
+      - run: pip install -r requirements.txt && pip install -e .
+      - name: Lineage doc is up to date
+        run: python scripts/gen_feature_lineage.py && git diff --exit-code docs/feature_lineage.md
+      - name: Unit, leakage, API (E2E) and integration tests (fixtures only - never used for reported metrics)
+        run: pytest -q
+      - name: dbt parse/compile
+        run: cd dbt && dbt parse --profiles-dir .
+  docker-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f infra/Dockerfile.api -t creditrisk-api:ci .
+      - run: docker build -f infra/Dockerfile.mlflow -t creditrisk-mlflow:ci .
+  # Real-data training is NOT run in CI: the Kaggle files are licence-gated and not in the repository.

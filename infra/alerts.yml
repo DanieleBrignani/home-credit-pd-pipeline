@@ -1,0 +1,30 @@
+# Alert thresholds are ENGINEERING PROPOSALS for a demo, not values derived from production traffic (there is none).
+groups:
+  - name: pd-api
+    rules:
+      - alert: HighErrorRate
+        expr: sum(rate(pd_api_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(pd_api_requests_total[5m])), 1e-9) > 0.01
+        for: 5m
+        labels: {severity: page}
+        annotations: {summary: ">1% of /predict requests failing"}
+      - alert: SlowPredictions
+        expr: histogram_quantile(0.95, sum(rate(pd_api_request_seconds_bucket[5m])) by (le)) > 0.25
+        for: 10m
+        labels: {severity: ticket}
+        annotations: {summary: "p95 latency above 250 ms SLO"}
+      - alert: FeatureMissingnessSpike
+        expr: (sum(rate(pd_feature_missing_total{feature=~"ext_source_.*|amt_annuity"}[15m])) by (feature)
+               / sum(rate(pd_feature_observed_total{feature=~"ext_source_.*|amt_annuity"}[15m])) by (feature)) > 0.6
+        for: 30m
+        labels: {severity: ticket}
+        annotations: {summary: "missingness of {{ $labels.feature }} unusually high (compare with training baseline)"}
+      - alert: HistoryLookupMisses
+        expr: rate(pd_history_lookup_miss_total[30m]) / clamp_min(sum(rate(pd_api_requests_total{status="200"}[30m])), 1e-9) > 0.5
+        for: 30m
+        labels: {severity: ticket}
+        annotations: {summary: "most scored applicants have no history features: feature table stale or key mismatch?"}
+      - alert: ModelNotLoaded
+        expr: absent(pd_model_info == 1)
+        for: 2m
+        labels: {severity: page}
+        annotations: {summary: "API has no active model"}

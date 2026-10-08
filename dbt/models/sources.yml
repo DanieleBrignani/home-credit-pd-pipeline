@@ -1,0 +1,22 @@
+version: 2
+sources:
+  - name: raw
+    quoting: {identifier: true}
+    description: >
+      Verbatim COPY of the Kaggle Home Credit Default Risk CSVs (all TEXT columns). Lineage per file in
+      meta.ingest_batches (sha256, row count, git commit).
+    tables:
+      - name: application_train
+        columns:
+          - {name: SK_ID_CURR, quote: true, tests: [not_null, unique]}
+      - name: application_test
+      - name: bureau
+        columns:
+          - {name: SK_ID_BUREAU, quote: true, tests: [not_null, unique]}
+      - name: bureau_balance
+      - name: previous_application
+        columns:
+          - {name: SK_ID_PREV, quote: true, tests: [not_null, unique]}
+      - name: installments_payments
+      - name: credit_card_balance
+      - name: POS_CASH_balance

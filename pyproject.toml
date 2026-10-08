@@ -1,0 +1,12 @@
+[project]
+name = "creditrisk"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = ["db: needs the Postgres container (docker compose up -d postgres)", "realdata: needs the real Kaggle files in data/raw"]

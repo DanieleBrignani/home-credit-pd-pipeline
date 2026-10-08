@@ -1,0 +1,16 @@
+.venv/
+data/raw/*.csv
+data/raw/*.zip
+__pycache__/
+*.pyc
+mlruns/
+mlartifacts/
+artifacts/
+.env
+pip_*.log
+dbt/target/
+dbt/logs/
+.pytest_cache/
+tests/fixtures/raw/
+artifacts/
+reports/*.png

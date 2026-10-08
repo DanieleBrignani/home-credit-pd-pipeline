@@ -1,0 +1,25 @@
+version: 2
+models:
+  - name: stg_application
+    columns:
+      - {name: sk_id_curr, tests: [unique, not_null]}
+      - name: target
+        tests:
+          - not_null
+          - accepted_values: {values: [0, 1]}
+  - name: stg_bureau
+    columns:
+      - {name: sk_id_bureau, tests: [unique, not_null]}
+      - name: sk_id_curr
+        tests:
+          - not_null
+          - relationships: {to: ref('stg_application'), field: sk_id_curr, config: {severity: warn}}
+  - name: stg_previous_application
+    columns:
+      - {name: sk_id_prev, tests: [unique, not_null]}
+  - name: stg_bureau_balance
+    columns:
+      - name: sk_id_bureau
+        tests:
+          - not_null
+          - relationships: {to: ref('stg_bureau'), field: sk_id_bureau, config: {severity: warn}}

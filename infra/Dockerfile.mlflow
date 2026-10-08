@@ -1,0 +1,5 @@
+FROM python:3.13-slim
+RUN pip install --no-cache-dir mlflow==2.22.5 "sqlalchemy>=2.0,<2.1" psycopg2-binary
+RUN useradd -r -u 10001 mlf && mkdir /mlartifacts && chown mlf /mlartifacts
+USER mlf
+EXPOSE 5000
