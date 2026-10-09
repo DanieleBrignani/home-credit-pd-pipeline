@@ -4,7 +4,7 @@
 
 Reasons, in order of weight:
 
-1. **Results exist now, but only from one machine and one run.** The pipeline has been run end to end on the real Home Credit files (row counts match the published counts), and the README results are generated from `reports/*.json`. They come from a single laptop run, recorded at commit `5980d74` plus uncommitted fixes to dbt tests, compose and scripts (none touch features or the model). No second environment, CI runner or independent reviewer has reproduced them, and see category 28 for the reproduction check.
+1. **Results exist now, but only from one machine and one run.** The pipeline has been run end to end on the real Home Credit files (row counts match the published counts), and the README results are generated from `reports/*.json`. They come from a single laptop run, recorded at commit `a975b6c` plus uncommitted fixes to dbt tests, compose and scripts (none touch features or the model). No second environment, CI runner or independent reviewer has reproduced them, and see category 28 for the reproduction check.
 2. Most categories below are `PARTIAL`: the mechanism exists and is tested, but it has never run against real data, real traffic, a remote CI runner, or a real incident.
 3. No category is `FAIL` any more, but several `PARTIAL`s contain known gaps: no managed secret store, TLS only from a local certificate authority, no off-machine backups, and a CI workflow that has never run on a remote.
 
@@ -116,7 +116,7 @@ Counts: 7 PASS, 22 PARTIAL, 0 FAIL. No *critical* category is `FAIL`; every crit
 - **Requirement:** every output traceable to inputs and code.
 - **Evidence:** `meta.ingest_batches` (sha256, rows, load time); generated `docs/feature_lineage.md` with source, transformation and availability for every feature (CI fails if stale; a test asserts every feature is documented); MLflow tags (git commit, dataset version, feature pipeline and schema versions, feature-table fingerprint); audit rows carry model and feature-schema versions. The reported results carry a clean commit hash (`reports/metrics.json`).
 - **Test:** `test_lineage_doc_covers_every_feature`; `test_train_register_and_serve_from_registry`.
-- **Limitation:** later commits changed serving and feature-building code after the reported training run; the feature change is proven bit-identical (all real rows) but the commit in `metrics.json` is not the repository head. No dbt docs graph and no column-level lineage tool.
+- **Limitation:** later commits changed serving and feature-building code after the reported training run; the feature change is proven bit-identical (all real rows) but the commit in `metrics.json` is not the repository head. No dbt docs graph and no column-level lineage tool. The local history was rewritten once before any push (to drop commit-message trailers); hashes stored in MLflow run tags and in files outside the repository carry the old values, mapped in `docs/commit_hash_map.json`.
 - **Required improvement:** publish `dbt docs`; fail training on a dirty tree; re-run reporting from a tagged release.
 
 ## 7. Database design — PARTIAL

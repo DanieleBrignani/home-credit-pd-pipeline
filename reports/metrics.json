@@ -38,7 +38,7 @@
     }
   },
   "status": "CANONICAL",
-  "git_commit": "76cc5f70aa51b3bc2aa4b9972e95b7931f3f86f1",
+  "git_commit": "c0bb7cb5ba13a4bda885f30496242a333c58fb2d",
   "feature_table_fingerprint": "83ca684bc5a8ed399e0c5ca1d81e8bdc",
   "run_config": {
     "n_iter": 12,
