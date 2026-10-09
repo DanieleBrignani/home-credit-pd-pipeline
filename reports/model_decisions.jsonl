@@ -9,3 +9,5 @@
 {"ts": "2026-10-09T10:25:28.843149+00:00", "kind": "rollback", "version": 6, "git_commit": "acca4b6941b2284d505fe734bb63b98479ff1f15-dirty", "from": 2, "to": 6, "reason": "drill complete, roll forward"}
 {"ts": "2026-10-09T11:02:08.848500+00:00", "kind": "rollback", "version": 2, "git_commit": "0474a2b2b1a571fb1459cba51b25a550c6b36415-dirty", "from": 6, "to": 2, "reason": "smoke test: measured rollback"}
 {"ts": "2026-10-09T11:02:16.042607+00:00", "kind": "rollback", "version": 6, "git_commit": "0474a2b2b1a571fb1459cba51b25a550c6b36415-dirty", "from": 2, "to": 6, "reason": "smoke test: roll forward"}
+{"ts": "2026-10-09T23:01:12.276245+00:00", "kind": "rollback", "version": 2, "git_commit": "6292959e5d1b4e4957266d73700549ef3cc832ce-dirty", "from": 6, "to": 2, "reason": "smoke test: measured rollback"}
+{"ts": "2026-10-09T23:01:33.777498+00:00", "kind": "rollback", "version": 6, "git_commit": "6292959e5d1b4e4957266d73700549ef3cc832ce-dirty", "from": 2, "to": 6, "reason": "smoke test: roll forward"}

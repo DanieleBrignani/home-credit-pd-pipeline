@@ -108,7 +108,7 @@ Timings depend on the machine; they are measured, not bit-reproducible. Metrics 
 | 1 | 16 | 3,000 | 0 | 22.0 | 738.9 / 1044.2 / 1139.5 |
 | 4 | 16 | 3,000 | 0 | 34.3 | 264.5 / 674.6 / 894.3 |
 
-**Container smoke test on the real stack** (`reports/smoke_stack_real.json`): TLS proxy, authentication, audit row, blocked operational endpoints, Prometheus and Grafana all checked. Measured rollback (alias flip, API reload, new version observed): 7.24 s; roll-forward: 7.04 s.
+**Container smoke test on the real stack** (`reports/smoke_stack_real.json`): TLS proxy, authentication, audit row, blocked operational endpoints, Prometheus and Grafana all checked. Measured rollback (alias flip, API reload, new version observed): 21.4 s; roll-forward: 21.57 s.
 
 **Backup/restore drill on the real database** (`reports/backup_drill.json`): PASSED; irreproducible data only (audit, registry, lineage, marts), dump 80.3 MB, backup 13.1 s, restore and verification 28.5 s, all table row counts equal.
 
