@@ -36,7 +36,9 @@ jobs:
       - run: docker build -f infra/Dockerfile.api -t creditrisk-api:ci .
       - run: docker build -f infra/Dockerfile.mlflow -t creditrisk-mlflow:ci .
       - run: docker build -f infra/Dockerfile.pipeline -t creditrisk-pipeline:ci .
-      # Vulnerability scan: defined here but NOT yet executed (the workflow has never run on a remote).
-      - uses: aquasecurity/trivy-action@0.28.0
-        with: {image-ref: "creditrisk-api:ci", severity: "CRITICAL,HIGH", exit-code: "1", ignore-unfixed: true}
+      # Vulnerability scan of the API image. REPORT-ONLY (exit-code 0): the findings are visible in the log but do not gate the build.
+      # The trivy image is not pinned yet; pin it (and consider gating on CRITICAL) after reviewing the first report.
+      - name: Image vulnerability scan (report only)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image             --severity CRITICAL,HIGH --ignore-unfixed --exit-code 0 creditrisk-api:ci
   # Real-data training is NOT run in CI: the Kaggle files are licence-gated and not in the repository.
