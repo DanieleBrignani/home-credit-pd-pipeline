@@ -199,7 +199,7 @@ Counts: 7 PASS, 22 PARTIAL, 0 FAIL. No *critical* category is `FAIL`; every crit
 
 ## 18. CI/CD — PARTIAL
 - **Requirement:** automated build/test on change; automated, gated delivery.
-- **Evidence:** `.github/workflows/ci.yml` (lineage freshness, full pytest against a Postgres service with coverage, dbt parse, builds of the API, MLflow and pipeline images, a report-only image scan). It has now run on GitHub Actions: run 1 passed `test` (about 3 min) and failed `docker-build` because I had written a non-existent tag for a third-party scan action; run 2 on commit `e2cbfb6`, after replacing that action with the scanner's container image, passed both jobs (`test` 2 min 35 s, `docker-build` 3 min 3 s, 3 min 7 s in total).
+- **Evidence:** `.github/workflows/ci.yml` (lineage freshness, full pytest against a Postgres service with coverage, dbt parse, builds of the API, MLflow and pipeline images, a report-only image scan). It has now run on GitHub Actions: run 1 passed `test` (about 3 min) and failed `docker-build` because I had written a non-existent tag for a third-party scan action; run 2 on commit `e2cbfb6`, after replacing that action with the scanner's container image, passed both jobs (`test` 2 min 35 s, `docker-build` 3 min 3 s, 3 min 7 s in total). Run 4 on `5ed98c5`, with the hardened API image, also passed both jobs (3 min 39 s in total).
 - **Test:** the two GitHub Actions runs above (checked from the Actions page).
 - **Limitation:** the CI uses fixtures only (the licence-gated Kaggle files are not in the repository); no CD, no release tagging, no image publishing, no deploy gate; the image scan is report-only (findings reviewed locally, see Security); the runner label is scheduled to move to a newer Ubuntu release and two actions are flagged for a Node.js deprecation (warnings only); no branch protection or required checks.
 - **Required improvement:** protect `main` with required checks, tag releases, publish images, make the scan gating after reviewing the first report, pin action versions by commit.
@@ -301,5 +301,5 @@ Recorded at the time of writing:
 - Reproduction: fingerprint identical after a rebuild; metrics reproduced to 1e-6 (`artifacts/reproduce_check2.log`).
 - `scripts/verify_readme_numbers.py`: `OK`.
 - Image scan (local, Trivy, HIGH/CRITICAL with fixes available): 23 findings before hardening, 18 after; all 18 are MLflow 2.x (17) or pyarrow (1, pinned by MLflow). Repository visibility was set to private after it had briefly been public.
-- CI: GitHub Actions run 2 on `e2cbfb6` passed both jobs (`test`, `docker-build`); run 1 had failed on a wrong action tag, since fixed. CI uses fixtures only.
+- CI: GitHub Actions run 2 on `e2cbfb6` and run 4 on `5ed98c5` (after the image hardening) both passed `test` and `docker-build` (run 4: 2 min 33 s and 3 min 35 s); run 1 had failed on a wrong action tag, since fixed. CI uses fixtures only.
 - Not done: any run on a second machine, off-site backup, MLflow 3.x upgrade (18 scan findings remain, all tied to MLflow 2.x), container training with enough memory, independent data re-download, any use of the CI for real-data results.
