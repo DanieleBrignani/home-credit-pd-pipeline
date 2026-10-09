@@ -66,55 +66,197 @@
           "detail": "challenger=0.4255 champion=0.3902"
         }
       ]
+    },
+    {
+      "ts": "2026-10-08T21:01:23.841979+00:00",
+      "kind": "rollback",
+      "version": 1,
+      "git_commit": "5980d740635434ef4c6c0fab911f79267db21584-dirty",
+      "from": 2,
+      "to": 1,
+      "reason": "scheduled rollback drill"
+    },
+    {
+      "ts": "2026-10-08T21:01:25.033540+00:00",
+      "kind": "rollback",
+      "version": 2,
+      "git_commit": "5980d740635434ef4c6c0fab911f79267db21584-dirty",
+      "from": 1,
+      "to": 2,
+      "reason": "drill complete, roll forward"
+    },
+    {
+      "ts": "2026-10-09T09:35:54.315388+00:00",
+      "kind": "rejected",
+      "version": 4,
+      "git_commit": "f98a77fb8651b99a340aff408d25ea5ce8149be8",
+      "challenger_version": 4,
+      "champion_version": 2,
+      "promote": false,
+      "checks": [
+        {
+          "gate": "gate0_canonical_data",
+          "passed": true,
+          "detail": "tag=True"
+        },
+        {
+          "gate": "gate1_feature_schema",
+          "passed": true,
+          "detail": "model=fs-508cbb598b current=fs-508cbb598b"
+        },
+        {
+          "gate": "gate2_auc_gain",
+          "passed": false,
+          "detail": "challenger=0.7820 champion=0.7820 need +0.002"
+        },
+        {
+          "gate": "gate3_brier",
+          "passed": true,
+          "detail": "challenger=0.06637 champion=0.06648"
+        },
+        {
+          "gate": "gate4_ks",
+          "passed": true,
+          "detail": "challenger=0.4247 champion=0.4255"
+        }
+      ]
+    },
+    {
+      "ts": "2026-10-09T09:53:26.679867+00:00",
+      "kind": "rejected",
+      "version": 6,
+      "git_commit": "76cc5f70aa51b3bc2aa4b9972e95b7931f3f86f1",
+      "challenger_version": 6,
+      "champion_version": 2,
+      "promote": false,
+      "checks": [
+        {
+          "gate": "gate0_canonical_data",
+          "passed": true,
+          "detail": "tag=True"
+        },
+        {
+          "gate": "gate1_feature_schema",
+          "passed": true,
+          "detail": "model=fs-508cbb598b current=fs-508cbb598b"
+        },
+        {
+          "gate": "gate2_auc_gain",
+          "passed": false,
+          "detail": "challenger=0.7827 champion=0.7820 need +0.002"
+        },
+        {
+          "gate": "gate3_brier",
+          "passed": true,
+          "detail": "challenger=0.06644 champion=0.06648"
+        },
+        {
+          "gate": "gate4_ks",
+          "passed": true,
+          "detail": "challenger=0.4248 champion=0.4255"
+        }
+      ]
+    },
+    {
+      "ts": "2026-10-09T09:54:20.539373+00:00",
+      "kind": "override_promoted",
+      "version": 6,
+      "git_commit": "76cc5f70aa51b3bc2aa4b9972e95b7931f3f86f1-dirty",
+      "challenger_version": 6,
+      "champion_version": 2,
+      "promote": true,
+      "checks": [
+        {
+          "gate": "gate0_canonical_data",
+          "passed": true,
+          "detail": "tag=True"
+        },
+        {
+          "gate": "gate1_feature_schema",
+          "passed": true,
+          "detail": "model=fs-508cbb598b current=fs-508cbb598b"
+        },
+        {
+          "gate": "gate2_auc_gain",
+          "passed": false,
+          "detail": "challenger=0.7827 champion=0.7820 need +0.002"
+        },
+        {
+          "gate": "gate3_brier",
+          "passed": true,
+          "detail": "challenger=0.06644 champion=0.06648"
+        },
+        {
+          "gate": "gate4_ks",
+          "passed": true,
+          "detail": "challenger=0.4248 champion=0.4255"
+        }
+      ],
+      "overridden_failed_gates": [
+        "gate2_auc_gain"
+      ],
+      "override_reason": "re-baseline: pipeline made independent of physical row order; same data, metrics differ from v2 only by sampling noise"
     }
   ],
   "status_before_drill": {
     "champion": {
+      "version": 6,
+      "run_id": "2eb37cbd677844859144f7630c3c1ea7",
+      "family": "lightgbm"
+    },
+    "challenger": {
+      "version": 6,
+      "run_id": "2eb37cbd677844859144f7630c3c1ea7",
+      "family": "lightgbm"
+    },
+    "previous_champion": {
       "version": 2,
       "run_id": "304bc0c908d34c0cbc32d07ec00cbea1",
       "family": "lightgbm"
-    },
-    "challenger": null,
-    "previous_champion": {
-      "version": 1,
-      "run_id": "0f9ac6f7aca342f78d95f0634f051951",
-      "family": "logreg"
     }
   },
   "rollback_drill": {
-    "from": 2,
-    "to": 1,
+    "from": 6,
+    "to": 2,
     "reason": "scheduled rollback drill"
   },
   "status_after_rollback": {
     "champion": {
-      "version": 1,
-      "run_id": "0f9ac6f7aca342f78d95f0634f051951",
-      "family": "logreg"
-    },
-    "challenger": null,
-    "previous_champion": {
       "version": 2,
       "run_id": "304bc0c908d34c0cbc32d07ec00cbea1",
+      "family": "lightgbm"
+    },
+    "challenger": {
+      "version": 6,
+      "run_id": "2eb37cbd677844859144f7630c3c1ea7",
+      "family": "lightgbm"
+    },
+    "previous_champion": {
+      "version": 6,
+      "run_id": "2eb37cbd677844859144f7630c3c1ea7",
       "family": "lightgbm"
     }
   },
   "roll_forward": {
-    "from": 1,
-    "to": 2,
+    "from": 2,
+    "to": 6,
     "reason": "drill complete, roll forward"
   },
   "status_final": {
     "champion": {
+      "version": 6,
+      "run_id": "2eb37cbd677844859144f7630c3c1ea7",
+      "family": "lightgbm"
+    },
+    "challenger": {
+      "version": 6,
+      "run_id": "2eb37cbd677844859144f7630c3c1ea7",
+      "family": "lightgbm"
+    },
+    "previous_champion": {
       "version": 2,
       "run_id": "304bc0c908d34c0cbc32d07ec00cbea1",
       "family": "lightgbm"
-    },
-    "challenger": null,
-    "previous_champion": {
-      "version": 1,
-      "run_id": "0f9ac6f7aca342f78d95f0634f051951",
-      "family": "logreg"
     }
   }
 }

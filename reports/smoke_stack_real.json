@@ -1,0 +1,23 @@
+{
+  "mode": "real",
+  "champion_version": 6,
+  "api_reload_status": 200,
+  "tls_proxy_serves_api": true,
+  "unauthenticated_rejected": true,
+  "predict_status_via_tls": 200,
+  "predict_fields_ok": true,
+  "history_features_found": true,
+  "audit_row_written": true,
+  "metrics_blocked_at_proxy": true,
+  "admin_blocked_at_proxy": true,
+  "prometheus_target_up": true,
+  "prometheus_has_api_metrics": true,
+  "grafana_dashboard_provisioned": true,
+  "prometheus_alert_rules_loaded": 5,
+  "api_container_non_root": true,
+  "rollback_seconds_flip_reload_confirmed": 7.24,
+  "roll_forward_seconds": 7.04,
+  "prediction_served_by_rolled_back_model": true,
+  "rollback_from": 6,
+  "rollback_to": 2
+}

@@ -1,12 +1,12 @@
 {
-  "model_version": "2",
+  "model_version": "6",
   "split": "test (descriptive only)",
   "min_n_for_auc": 500,
   "overall": {
     "n": 46015,
     "default_rate": 0.08073454308377703,
-    "mean_pd": 0.07952290314564826,
-    "roc_auc": 0.787995246413333
+    "mean_pd": 0.07985699011842112,
+    "roc_auc": 0.7888872661785808
   },
   "segments": {
     "contract_type": [
@@ -14,17 +14,17 @@
         "segment": "Cash loans",
         "n": 41615,
         "default_rate": 0.08383996155232488,
-        "mean_pd": 0.08205964213249099,
-        "calibration_ratio": 0.9787652643575846,
-        "roc_auc": 0.7868550369566257
+        "mean_pd": 0.0824851255128493,
+        "calibration_ratio": 0.9838402115841856,
+        "roc_auc": 0.7876740542330211
       },
       {
         "segment": "Revolving loans",
         "n": 4400,
         "default_rate": 0.05136363636363636,
-        "mean_pd": 0.05553054111440745,
-        "calibration_ratio": 1.0811255792185521,
-        "roc_auc": 0.782433183084497
+        "mean_pd": 0.05500020501861916,
+        "calibration_ratio": 1.0708004516899305,
+        "roc_auc": 0.7842363811373398
       }
     ],
     "bureau_history": [
@@ -32,17 +32,17 @@
         "segment": "has bureau history",
         "n": 39355,
         "default_rate": 0.07734722398678694,
-        "mean_pd": 0.07590797368037157,
-        "calibration_ratio": 0.981392346974712,
-        "roc_auc": 0.7881652030670505
+        "mean_pd": 0.0761303957776707,
+        "calibration_ratio": 0.9842679782622307,
+        "roc_auc": 0.7892272610924944
       },
       {
         "segment": "no bureau history",
         "n": 6660,
         "default_rate": 0.10075075075075075,
-        "mean_pd": 0.10088409670510232,
-        "calibration_ratio": 1.0013235231832809,
-        "roc_auc": 0.7787254775832195
+        "mean_pd": 0.1018780291995372,
+        "calibration_ratio": 1.0111887846034542,
+        "roc_auc": 0.7792206725743346
       }
     ],
     "previous_app_history": [
@@ -50,17 +50,17 @@
         "segment": "has previous applications",
         "n": 43502,
         "default_rate": 0.08215714220035861,
-        "mean_pd": 0.08081158905153092,
-        "calibration_ratio": 0.9836222011526855,
-        "roc_auc": 0.7863807763879852
+        "mean_pd": 0.08116557751706731,
+        "calibration_ratio": 0.9879308766501013,
+        "roc_auc": 0.7873051388974693
       },
       {
         "segment": "no previous applications",
         "n": 2513,
         "default_rate": 0.05610823716673299,
-        "mean_pd": 0.05721473988352821,
-        "calibration_ratio": 1.0197208604773502,
-        "roc_auc": 0.8094225778288064
+        "mean_pd": 0.05720431641531468,
+        "calibration_ratio": 1.0195350861821686,
+        "roc_auc": 0.8098262231949578
       }
     ],
     "ext_scores_missing": [
@@ -68,31 +68,31 @@
         "segment": "0 of 3 missing",
         "n": 16373,
         "default_rate": 0.07536798387589323,
-        "mean_pd": 0.07125310806142834,
-        "calibration_ratio": 0.9454028673336843,
-        "roc_auc": 0.7878816751907741
+        "mean_pd": 0.07153574914562792,
+        "calibration_ratio": 0.9491530152037002,
+        "roc_auc": 0.789323527424901
       },
       {
         "segment": "1 of 3 missing",
         "n": 24011,
         "default_rate": 0.0792553413019033,
-        "mean_pd": 0.08009198483737363,
-        "calibration_ratio": 1.0105563047452328,
-        "roc_auc": 0.7910968473592733
+        "mean_pd": 0.08041420371429171,
+        "calibration_ratio": 1.0146218840692895,
+        "roc_auc": 0.791642584661302
       },
       {
         "segment": "2 of 3 missing",
         "n": 5608,
         "default_rate": 0.10306704707560628,
-        "mean_pd": 0.10130225461266973,
-        "calibration_ratio": 0.9828772385256952,
-        "roc_auc": 0.7671214924982973
+        "mean_pd": 0.10184598169937223,
+        "calibration_ratio": 0.9881527082527326,
+        "roc_auc": 0.7687133255828351
       },
       {
         "segment": "3 of 3 missing",
         "n": 23,
         "default_rate": 0.0,
-        "mean_pd": 0.06206774605255324,
+        "mean_pd": 0.060298642775838865,
         "calibration_ratio": null,
         "roc_auc": null
       }
@@ -102,41 +102,41 @@
         "segment": "30-39",
         "n": 12253,
         "default_rate": 0.09336489023096385,
-        "mean_pd": 0.09424671573408733,
-        "calibration_ratio": 1.0094449369665839,
-        "roc_auc": 0.7859638785914778
+        "mean_pd": 0.09452972301081548,
+        "calibration_ratio": 1.0124761329121696,
+        "roc_auc": 0.7869831019641983
       },
       {
         "segment": "40-49",
         "n": 11527,
         "default_rate": 0.08120065932159279,
-        "mean_pd": 0.07469246796957218,
-        "calibration_ratio": 0.919850510988524,
-        "roc_auc": 0.8020413437630887
+        "mean_pd": 0.07514311517299765,
+        "calibration_ratio": 0.9254003083324187,
+        "roc_auc": 0.8041668986811088
       },
       {
         "segment": "50-59",
         "n": 10298,
         "default_rate": 0.0591376966401243,
-        "mean_pd": 0.06014584898023744,
-        "calibration_ratio": 1.0170475415410265,
-        "roc_auc": 0.765892491290294
+        "mean_pd": 0.060272287930041434,
+        "calibration_ratio": 1.0191855847349207,
+        "roc_auc": 0.764544831958643
       },
       {
         "segment": "60+",
         "n": 5134,
         "default_rate": 0.046552395792754185,
-        "mean_pd": 0.04709651548668695,
-        "calibration_ratio": 1.0116883284880789,
-        "roc_auc": 0.752519221646202
+        "mean_pd": 0.047227651953973,
+        "calibration_ratio": 1.0145052934380645,
+        "roc_auc": 0.7539928455729311
       },
       {
         "segment": "<30",
         "n": 6803,
         "default_rate": 0.11568425694546523,
-        "mean_pd": 0.11499130365498138,
-        "calibration_ratio": 0.9940099603111033,
-        "roc_auc": 0.7608482420449324
+        "mean_pd": 0.11568737754126379,
+        "calibration_ratio": 1.0000269751120936,
+        "roc_auc": 0.7619448518478468
       }
     ]
   }

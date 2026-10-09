@@ -1,5 +1,5 @@
 {
-  "model_version": "2",
+  "model_version": "6",
   "note": "static snapshot; see module docstring for what this does and does not show",
   "baseline_train_vs_valid": {
     "ext_source_mean": {
@@ -19,7 +19,7 @@
       "status": "stable"
     },
     "score": {
-      "psi": 0.0004082116071641675,
+      "psi": 0.0002770886930606217,
       "status": "stable"
     },
     "missing_ext_source_1_share_delta": -0.00230788575299945
@@ -42,13 +42,13 @@
       "status": "stable"
     },
     "score": {
-      "psi": 0.0005602487145813873,
+      "psi": 0.0001636960087537579,
       "status": "stable"
     },
     "missing_ext_source_1_share_delta": -0.0008051698405679986
   },
   "segment_shift_test_cash_vs_revolving": {
-    "score_psi": 0.14120358118837784,
+    "score_psi": 0.14217738933002916,
     "n_cash": 41615,
     "n_revolving": 4400,
     "interpretation": "population heterogeneity inside one snapshot, not drift over time"
@@ -63,9 +63,9 @@
         "credit_term_months": 0.0003,
         "ext_source_2": 2.0575
       },
-      "score_psi": 0.006177389881270072,
+      "score_psi": 0.00863526882743843,
       "score_status": "stable",
-      "mean_score_change": 0.0037581360830575145
+      "mean_score_change": 0.005392469649812798
     },
     "credit_income_ratio inflated x1.5": {
       "kind": "INJECTED (synthetic perturbation applied directly to one model-input column of real test rows)",
@@ -75,9 +75,9 @@
         "annuity_income_ratio": 0.0004,
         "credit_term_months": 0.0003
       },
-      "score_psi": 0.0009042925807230156,
+      "score_psi": 0.00040793485657123597,
       "score_status": "stable",
-      "mean_score_change": 0.0007916538089446229
+      "mean_score_change": 0.000582348256157425
     },
     "ext_source_1 missingness +30pp": {
       "kind": "INJECTED (synthetic perturbation applied directly to one model-input column of real test rows)",
@@ -86,11 +86,11 @@
         "credit_income_ratio": 0.0002,
         "annuity_income_ratio": 0.0004,
         "credit_term_months": 0.0003,
-        "ext_source_1": 0.0715
+        "ext_source_1": 0.0714
       },
-      "score_psi": 0.0016357057819388417,
+      "score_psi": 0.001111206558349245,
       "score_status": "stable",
-      "mean_score_change": 0.0014410930024535556
+      "mean_score_change": 0.0014676959726211275
     }
   }
 }

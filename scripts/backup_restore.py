@@ -60,11 +60,19 @@ def drill(out: Path, full: bool = False) -> int:
     scratch = f"restore_drill_{int(time.time())}"
     psql("postgres", f"create database {scratch}")
     try:
+        t1 = time.time()   # restore + verification timing starts before the copy into the container
         sh("docker", "cp", str(dump), f"{CONTAINER}:/tmp/{dump.name}")
         sh("docker", "exec", CONTAINER, "pg_restore", "-U", USER, "-d", scratch, "--no-owner", f"/tmp/{dump.name}")
         a, b = counts(DB), counts(scratch)
         ok = a == b and bool(a)
+        t_restore = time.time() - t1
         print("source :", a, "\nrestore:", b, "\nRESTORE DRILL", "PASSED" if ok else "FAILED")
+        print(f"backup {t_backup:.1f}s, restore+verify {t_restore:.1f}s, dump {dump.stat().st_size/1e6:.1f} MB "
+              f"(measured on this machine; not an RTO/RPO)")
+        import json
+        dest = ROOT / ("reports" if DB == "creditrisk" else "artifacts") / "backup_drill.json"   # fixture runs never write to reports/
+        dest.write_text(json.dumps({"passed": ok, "database": DB, "full_dump": full, "dump_mb": dump.stat().st_size / 1e6,
+                                    "backup_seconds": t_backup, "restore_verify_seconds": t_restore, "row_counts": a}, indent=2))
         return 0 if ok else 1
     finally:
         psql("postgres", f"drop database if exists {scratch}")

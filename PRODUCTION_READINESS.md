@@ -6,7 +6,7 @@ Reasons, in order of weight:
 
 1. **Results exist now, but only from one machine and one run.** The pipeline has been run end to end on the real Home Credit files (row counts match the published counts), and the README results are generated from `reports/*.json`. They come from a single laptop run, recorded at commit `5980d74` plus uncommitted fixes to dbt tests, compose and scripts (none touch features or the model). No second environment, CI runner or independent reviewer has reproduced them, and see category 28 for the reproduction check.
 2. Most categories below are `PARTIAL`: the mechanism exists and is tested, but it has never run against real data, real traffic, a remote CI runner, or a real incident.
-3. One category (`Scalability`) is `FAIL`, and several `PARTIAL`s contain known gaps (no TLS, no secret manager, no off-machine backups).
+3. No category is `FAIL` any more, but several `PARTIAL`s contain known gaps: no managed secret store, TLS only from a local certificate authority, no off-machine backups, and a CI workflow that has never run on a remote.
 
 This is a reviewed, tested **engineering reference implementation**, not a deployable lending service. It estimates PD and makes no lending decision.
 
@@ -25,6 +25,17 @@ The first pass found three **critical FAILs**. They were implemented before clos
 | No backup / recovery path for the audit trail and registry | `scripts/backup_restore.py` with a *restore drill* into a scratch DB comparing row counts | drill output `RESTORE DRILL PASSED` (fixture DB) |
 | Dependencies only lower-bounded → rebuild could differ | `requirements.lock` (exact versions) and exact pins for the serving image | `requirements.lock`, `infra/requirements-serving.txt` |
 
+Found later, on real data and under load (all fixed, each with a test or a measurement):
+
+| Finding | Fix | Evidence |
+|---|---|---|
+| Models depended on the physical row order of the feature table (test AUC moved in the third decimal after a rebuild) | training reads rows `ORDER BY sk_id_curr` | reproduction verified after a fresh `dbt build`; `test_training_frame_is_ordered_independent_of_physical_row_order` |
+| API failed to start with several workers (audit DDL race) | advisory lock around the DDL | `test_audit_ddl_is_safe_when_many_workers_start_at_once`; load test with four workers ran without errors |
+| Request path dominated by pandas feature building (about 99 ms per single-row request) | NumPy implementation, bit-identical to the previous one | exact equality over all real rows and in `test_features.py`; about 6.5 ms per request afterwards |
+| No index on the online lookup table | primary key on `marts.applicant_history_features` | profile: lookup about 4 ms |
+| No TLS, rate limiting, query timeouts; validation errors invisible in metrics | Caddy TLS proxy, per-key token bucket, connect/statement timeouts, 422 counted | `test_rate_limit_per_key_returns_429_with_retry_after`, `test_validation_failures_are_counted_in_metrics`, real-stack smoke test |
+| Backup copied multi-gigabyte rebuildable schemas | default backup covers only irreproducible data | drill on the real database |
+
 Also fixed: concurrent-loader race (Postgres advisory lock in ingest), silent schema additions (now logged), promotion policy flaw (first run could promote the boosted model with nothing to compare against; now the baseline bootstraps and the boosted model must earn promotion, tested), host-port assumptions in compose (configurable).
 
 ## Summary
@@ -36,7 +47,7 @@ Also fixed: concurrent-loader race (Postgres advisory lock in ingest), silent sc
 | 3 | Data contracts | PARTIAL | |
 | 4 | Schema evolution | PARTIAL | |
 | 5 | Idempotency | PASS | yes |
-| 6 | Lineage | PARTIAL | yes |
+| 6 | Lineage | PASS | yes |
 | 7 | Database design | PARTIAL | |
 | 8 | Data quality | PARTIAL | |
 | 9 | Orchestration | PARTIAL | |
@@ -54,14 +65,14 @@ Also fixed: concurrent-loader race (Postgres advisory lock in ingest), silent sc
 | 21 | SLIs | PARTIAL | |
 | 22 | SLOs | PARTIAL | |
 | 23 | Performance | PASS | |
-| 24 | Scalability | **FAIL** | |
+| 24 | Scalability | PARTIAL | |
 | 25 | Recovery | PARTIAL | yes |
 | 26 | Rollback | PASS | yes |
 | 27 | Documentation | PARTIAL | |
 | 28 | Reproducibility | PARTIAL | yes |
 | 29 | Cost awareness | PARTIAL | |
 
-No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdict above stands.
+Counts: 7 PASS, 22 PARTIAL, 0 FAIL. No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdict above stands.
 
 ---
 
@@ -101,19 +112,19 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 - **Limitation:** verified on fixtures; the advisory lock is not tested under real concurrency; `train` appends new registry versions per run by design.
 - **Required improvement:** concurrency test; dedupe training runs by (dataset, code) hash.
 
-## 6. Lineage — PARTIAL
+## 6. Lineage — PASS
 - **Requirement:** every output traceable to inputs and code.
-- **Evidence:** `meta.ingest_batches`; generated `docs/feature_lineage.md` with source/transform/availability per feature (CI fails if stale; test asserts every feature is documented); MLflow tags (git commit, dataset version, feature pipeline/schema versions, feature-table fingerprint); audit rows carry model and feature-schema versions.
-- **Test:** `test_leakage.py::test_lineage_doc_covers_every_feature`; `test_integration.py::test_train_register_and_serve_from_registry`.
-- **Limitation:** the repository has **no commits yet**, so the recorded git commit is `unknown`/dirty until it does; no dbt docs graph generated; no column-level lineage tool.
-- **Required improvement:** commit, tag releases, fail training on a dirty tree, publish `dbt docs`.
+- **Evidence:** `meta.ingest_batches` (sha256, rows, load time); generated `docs/feature_lineage.md` with source, transformation and availability for every feature (CI fails if stale; a test asserts every feature is documented); MLflow tags (git commit, dataset version, feature pipeline and schema versions, feature-table fingerprint); audit rows carry model and feature-schema versions. The reported results carry a clean commit hash (`reports/metrics.json`).
+- **Test:** `test_lineage_doc_covers_every_feature`; `test_train_register_and_serve_from_registry`.
+- **Limitation:** later commits changed serving and feature-building code after the reported training run; the feature change is proven bit-identical (all real rows) but the commit in `metrics.json` is not the repository head. No dbt docs graph and no column-level lineage tool.
+- **Required improvement:** publish `dbt docs`; fail training on a dirty tree; re-run reporting from a tagged release.
 
 ## 7. Database design — PARTIAL
 - **Requirement:** sensible schemas, keys, indexes, privileges.
-- **Evidence:** layered schemas (`raw`, `staging`, `intermediate`, `marts`, `meta`, `audit`); `audit.predictions` has a primary key, check constraint on probability range and a time index; marts keys tested unique.
-- **Test:** dbt tests; `test_integration` audit assertions.
-- **Limitation:** no indexes on `marts.applicant_history_features(sk_id_curr)` beyond what a lookup needs (it is not declared as a PK because dbt builds it with CTAS); a single DB user owns everything, so `revoke update, delete` on the audit table is not enforceable; no partitioning/retention.
-- **Required improvement:** role separation, explicit index/PK on the lookup table, partitioned audit with retention.
+- **Evidence:** layered schemas (`raw`, `staging`, `intermediate`, `marts`, `meta`, `audit`); `audit.predictions` has a primary key, a probability range check and a time index; the online lookup table now has a primary key (lookup measured at about 4 ms); marts keys tested unique.
+- **Test:** dbt tests; `test_integration` audit assertions; profile of the request path.
+- **Limitation:** a single database user owns everything, so `revoke update, delete` on the audit table is not enforceable; no partitioning or retention; audit growth is unbounded.
+- **Required improvement:** role separation, partitioned audit with retention.
 
 ## 8. Data quality — PARTIAL
 - **Requirement:** automated checks on content, failing the pipeline when violated.
@@ -132,10 +143,10 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 
 ## 10. Error handling — PARTIAL
 - **Requirement:** failures are contained, classified and safe.
-- **Evidence:** API: audit failure → 503 and no score; model not loaded → 503; inference errors → 500 without payload; validation → 422. Pipeline: contract violation exit code 2; dbt failures raise non-retryable errors.
-- **Test:** `test_audit_failure_withholds_score`, `test_not_ready_without_model`, `test_forbidden_or_unknown_fields_rejected`.
-- **Limitation:** no circuit breaker/timeouts on the DB calls; 422 responses are not counted in metrics; flow error paths other than the retry policy are not unit-tested.
-- **Required improvement:** DB timeouts, request-level deadline, metrics for validation failures.
+- **Evidence:** API: audit failure gives 503 and no score; model not loaded gives 503; inference errors give 500 without payload; validation gives 422 and is now counted; database calls have connect and statement timeouts. Pipeline: contract violation exits with code 2; dbt failures are non-retryable.
+- **Test:** `test_audit_failure_withholds_score`, `test_not_ready_without_model`, `test_forbidden_or_unknown_fields_rejected`, `test_validation_failures_are_counted_in_metrics`.
+- **Limitation:** no circuit breaker; timeouts were not fault-injected; flow error paths other than the retry policy are not unit-tested.
+- **Required improvement:** fault-injection tests (database stopped mid-request), request deadline.
 
 ## 11. Retry strategy — PARTIAL
 - **Requirement:** transient faults retried with backoff; deterministic faults not.
@@ -146,10 +157,10 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 
 ## 12. Security — PARTIAL
 - **Requirement:** authenticated, least-privilege, minimal attack surface.
-- **Evidence:** API key on `/predict` and `/model`, token on `/admin/reload`, `extra=forbid` input models with range limits, non-root container, no payload logging.
-- **Test:** `test_predict_requires_valid_api_key`, `test_admin_reload_requires_token`; smoke `api_container_non_root: true`.
-- **Limitation:** no TLS, no per-key rate limiting or quotas, no key rotation tooling, `/metrics` unauthenticated, no dependency/image vulnerability scanning, static admin token, model files are pickles (load only from a trusted registry).
-- **Required improvement:** TLS/reverse proxy and mTLS or OAuth, rate limits, scanner in CI, signed model artifacts.
+- **Evidence:** API key on `/predict` and `/model` (hash compared in constant time), per-key token-bucket rate limit, token on `/admin/reload`, input models with `extra=forbid` and range limits, non-root container, no payload logging, TLS proxy that does not expose `/admin` or `/metrics`, API port bound to loopback. The real-stack smoke test checked unauthenticated rejection, blocked endpoints and non-root.
+- **Test:** `test_predict_requires_valid_api_key`, `test_rate_limit_per_key_returns_429_with_retry_after`, `test_admin_reload_requires_token`; `scripts/smoke_stack.py --real`.
+- **Limitation:** the TLS certificate comes from a local certificate authority (not publicly trusted), no mutual TLS or OAuth, the rate limit is per API process (not shared across workers), no key-rotation tooling, a static admin token, the vulnerability scan is defined in CI but has never run, model files are pickles (load only from a trusted registry).
+- **Required improvement:** publicly trusted certificate or load-balancer TLS, shared rate limiting, scanner run in CI, signed model artifacts.
 
 ## 13. Secret management — PARTIAL
 - **Requirement:** no secrets in code; managed storage and rotation.
@@ -180,10 +191,10 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 - **Required improvement:** run the same file against the real data subset in a nightly job.
 
 ## 17. End-to-end testing — PASS
-- **Requirement:** sample applicant → API prediction.
-- **Evidence:** in-process E2E in `test_api.py`; container-level E2E `scripts/smoke_stack.py` (compose stack, containerised registry, authenticated prediction, audit row, Prometheus scrape, Grafana dashboard) — output `artifacts/smoke_stack.json`, `SMOKE PASSED`.
+- **Requirement:** sample applicant to API prediction.
+- **Evidence:** in-process end-to-end tests in `test_api.py`; container-level `scripts/smoke_stack.py --real` on the real database and the real champion: TLS proxy, unauthenticated rejection, authenticated prediction with a real test-split applicant, audit row, blocked operational endpoints, Prometheus scrape and rules, Grafana dashboard, non-root container (`reports/smoke_stack_real.json`, `SMOKE PASSED`). A fixture-mode variant exists for CI-style use.
 - **Test:** the above.
-- **Limitation:** the model is trained on fixtures; the smoke test proves wiring, not quality; it is not in CI.
+- **Limitation:** one applicant per run; the smoke test is not in CI.
 - **Required improvement:** run the smoke test in CI with a pre-built fixture model.
 
 ## 18. CI/CD — PARTIAL
@@ -195,10 +206,10 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 
 ## 19. Containerization — PARTIAL
 - **Requirement:** reproducible, minimal, safe images.
-- **Evidence:** API and MLflow images build; compose stack ran healthy; API runs as non-root with a healthcheck; serving library versions pinned.
-- **Test:** `scripts/smoke_stack.py`.
-- **Limitation:** API image is large (about 1.6 GB: SHAP, MLflow, LightGBM); base images not pinned by digest; no image scanning/SBOM; the training pipeline runs on the host, not in a container.
-- **Required improvement:** slim serving image, digest pins, scan in CI, containerised pipeline runner.
+- **Evidence:** API, MLflow and pipeline images build; the compose stack ran healthy on the real data; the API runs as non-root with a healthcheck; serving library versions are pinned; a Linux lock file taken from the pipeline image has the same versions of the key libraries as the Windows lock.
+- **Test:** `scripts/smoke_stack.py --real`.
+- **Limitation:** the pipeline image ran up to data loading but **training inside Docker with the default memory limit crashed the Docker engine**, so the reported results come from a host run; the API image is large (about 1.6 GB); base images are not pinned by digest; the image scan is defined in CI and never executed.
+- **Required improvement:** raise the container memory limit (about 12 GB) and re-run the pipeline in the container; slim serving image; digest pins; scanner run.
 
 ## 20. Observability — PARTIAL
 - **Requirement:** metrics, dashboards and alerts covering behaviour and health.
@@ -221,35 +232,33 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 - **Limitation:** targets are guesses, not derived from data; no error-budget policy or owner.
 - **Required improvement:** set after a baseline period with stakeholders.
 
-## 23. Performance — PARTIAL
+## 23. Performance — PASS
 - **Requirement:** measured latency/throughput of the real stack.
-- **Evidence:** `scripts/benchmark_inference.py` measures p50/p95/p99 through uvicorn with real DB lookup and audit write, using test-split applicants; `make_results.py` publishes them.
-- **Real-data evidence:** the benchmark ran against the real champion with real test-split applicants: 2000 sequential requests, no errors; latencies and the feature-pipeline and training times are in the README results block (from `reports/inference_benchmark.json`, `reports/runtime.json`, `reports/metrics.json`).
+- **Evidence:** `scripts/benchmark_inference.py` on the real champion with real test-split applicants (2000 sequential requests, no errors): p50 about 58 ms and p95 about 67 ms (`reports/inference_benchmark.json`; the README results block is generated from it). A profile of the request path found that feature building dominated and removed most of it (about 99 ms to about 6.5 ms per request, bit-identical output); database lookup is about 4 ms; model prediction about 14 ms for the 1785-tree champion. Feature-pipeline and training times are in `reports/runtime.json` and `reports/metrics.json`.
 - **Test:** `python scripts/benchmark_inference.py` (re-runnable).
-- **Limitation:** single client, single uvicorn worker, loopback, one laptop; no concurrent-load profile, so it measures latency, not capacity. The synchronous audit insert and the SHAP-free path are included; explanations are not benchmarked.
-- **Required improvement:** concurrent-load test and a latency budget breakdown (validation, DB lookup, feature build, model, audit).
+- **Limitation:** single client on one laptop, loopback, no TLS proxy in this path; the in-process components do not account for the whole median (HTTP handling, validation, audit commit and metric updates are not broken down); explanations (SHAP) are not benchmarked.
+- **Required improvement:** a per-stage latency breakdown and a latency budget; benchmark through the proxy.
 
-## 24. Scalability — FAIL
+## 24. Scalability — PARTIAL
 - **Requirement:** demonstrated handling of larger data and request volumes.
-- **Evidence:** none beyond design intent (stateless API, pooled connections, features precomputed).
-- **Test:** none; no load test, no large-data run.
-- **Limitation:** one uvicorn worker, one Postgres, synchronous audit insert, all aggregates rebuilt in full each run, SHAP computed in-request when asked.
-- **Required improvement:** load test, async/batched audit sink, incremental dbt models, horizontal API scaling test. Not a blocker for a reference implementation; a blocker for production.
+- **Evidence:** data volume: about 55 million source rows loaded, aggregated and trained on a single node (timings in the README results block). Request volume: `scripts/load_test.py` ran 3000 requests at concurrency 16 against one worker and four workers with no errors (`reports/load_test.json`): about 22 requests/s with one worker and about 34 with four, with p95 latency of roughly one second and 0.7 seconds respectively under that concurrency.
+- **Test:** `python scripts/load_test.py`; `test_audit_ddl_is_safe_when_many_workers_start_at_once`.
+- **Limitation:** scaling is clearly sub-linear (about 1.6x for four workers) because client, workers and Postgres share one machine, each request does a synchronous audit insert, and the rate limit is per process; this is a capacity probe of a laptop, not a sizing; no autoscaling, no multi-node test, dbt models are rebuilt in full every run.
+- **Required improvement:** separate load generator and database hosts, asynchronous or batched audit sink, incremental dbt models, a capacity target derived from real traffic.
 
 ## 25. Recovery — PARTIAL
 - **Requirement:** restore service and data after loss, with known objectives.
-- **Evidence:** `scripts/backup_restore.py drill` restores a dump into a scratch DB and compares row counts (`RESTORE DRILL PASSED` on the fixture DB); derived data rebuilds from raw (tested); runbook in `docs/runbook.md`.
+- **Evidence:** `scripts/backup_restore.py drill` on the **real database**: backup of the irreproducible data (audit trail, MLflow registry and runs, lineage, marts) restored into a scratch database with every table's row count equal (`reports/backup_drill.json`: about 80 MB, backup about 13 s, restore and verification about 28 s on this machine). Derived data rebuilds from the locked raw files (rebuild verified identical). Runbook in `docs/runbook.md`. A Docker engine crash during this work also showed the data volume surviving a full engine restart.
 - **Test:** the drill.
-- **Limitation:** manual; backups stay on the same machine, unencrypted, unscheduled; RTO/RPO unmeasured; MLflow artifact volume not backed up by the script.
-- **Required improvement:** scheduled encrypted off-site backups, artifact-store backup, measured RTO/RPO.
+- **Limitation:** manual and unscheduled; backups stay on the same machine, unencrypted; measured durations are not an RTO or RPO; the MLflow artifact volume (model files) is not covered by the database dump.
+- **Required improvement:** scheduled encrypted off-site backups including the artifact volume, and agreed RTO/RPO.
 
 ## 26. Rollback — PASS
 - **Requirement:** champion/challenger, promotion decision, rollback mechanism.
-- **Evidence:** MLflow aliases (`champion`, `challenger`, `previous_champion`); promotion rule with explicit gates in `registry.py`; every decision logged to `reports/model_decisions.jsonl`; rollback by alias repoint plus `/admin/reload`; `scripts/lifecycle_demo.py` runs a rollback drill.
-- **Test:** `tests/test_registry.py` (promotion gates, bootstrap-then-challenge lifecycle, rollback, rollback-without-target).
-- **Real-data evidence:** on the real registered versions the baseline was bootstrapped as champion, the LightGBM challenger passed every gate and was promoted, and the rollback drill moved champion to the previous version and rolled forward again (`reports/lifecycle_demo.json`, `reports/model_decisions.jsonl`).
-- **Limitation:** rollback of *data/feature* changes is "rebuild from raw", not instant; time-to-rollback was not measured; the API reload after rollback was exercised only in the fixture smoke test.
-- **Required improvement:** measure time-to-rollback including API reload on the real stack.
+- **Evidence:** MLflow aliases (`champion`, `challenger`, `previous_champion`); a promotion rule with explicit gates; every decision logged with the gate values, including two rejections for insufficient gain and one operator override that records its reason and the failed gate; rollback by alias repoint plus `/admin/reload`. On the real stack the measured time from alias flip through API reload to the new version being served was about 7 seconds, and a prediction was confirmed to come from the rolled-back model; roll-forward took about the same (`reports/smoke_stack_real.json`). `scripts/lifecycle_demo.py` also runs the drill.
+- **Test:** `tests/test_registry.py` (promotion gates, lifecycle, override, rollback); `scripts/smoke_stack.py --real`.
+- **Limitation:** rollback of data or feature changes is "rebuild from raw", not instant; timing is one measurement on a laptop; the override path is trusted to operators with registry access.
+- **Required improvement:** approval workflow for overrides; repeat the timing under load.
 
 ## 27. Documentation — PARTIAL
 - **Requirement:** accurate docs for operators and reviewers.
@@ -260,10 +269,10 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 
 ## 28. Reproducibility — PARTIAL
 - **Requirement:** same inputs and code give the same features and metrics.
-- **Evidence (real data, this machine):** (a) a second full `dbt build` from the raw tables gave a feature-table fingerprint identical to the one recorded in `reports/metrics.json`; (b) `scripts/reproduce_check.py` re-trained both models from the recorded seed and configuration and matched the dataset version, the feature fingerprint, and every validation and test metric to 1e-6 (`artifacts/reproduce_check.log`, `artifacts/reproduce_metrics.json`). Supporting: hash split, deterministic LightGBM, `requirements.lock`, `scripts/verify_readme_numbers.py` ties every README number to `reports/*.json`.
-- **Test:** `test_feature_rebuild_is_bit_identical` (fixtures), plus the two real-data runs above.
-- **Limitation:** all reproduction was on one machine with the same library versions; the first reproduction attempt crashed on Windows temp-file cleanup (fixed) before comparing, so it was repeated; the lock file is Windows/Python 3.13 specific; timings are not reproducible bit-for-bit; the raw files were not re-ingested from an independent download; the committed code differs from the code that produced the results only by uncommitted dbt-test, compose and script fixes.
-- **Required improvement:** reproduce on a second OS/CI runner from a Linux lock; re-download the data independently and compare checksums; commit a clean tree and re-run so metrics carry a clean commit hash.
+- **Evidence (real data):** after a second full `dbt build` the feature-table fingerprint was identical to the recorded one; `scripts/reproduce_check.py` re-trained both models and matched the dataset version, the feature fingerprint and every validation and test metric to 1e-6, **after** training was made independent of physical row order (an earlier run showed that without this, a rebuilt table in another row order gave slightly different metrics). Also: hash split, deterministic LightGBM, `requirements.lock` and a Linux lock from the pipeline image with matching key-library versions, `scripts/verify_readme_numbers.py` tying README numbers to `reports/*.json`.
+- **Test:** `test_feature_rebuild_is_bit_identical`, `test_training_frame_is_ordered_independent_of_physical_row_order`, and the real-data runs above.
+- **Limitation:** all reproduction on one machine; the Linux lock was generated but not used to reproduce the results; the raw files were not re-downloaded independently; run-to-run noise from row order is about one thousandth of AUC, so smaller model differences are not meaningful; timings are not reproducible bit-for-bit.
+- **Required improvement:** reproduce on a second OS or CI runner from the Linux lock; independent re-download and checksum comparison; tag a release and re-run reporting from it.
 
 ## 29. Cost awareness — PARTIAL
 - **Requirement:** cost drivers identified and measurable.
@@ -276,9 +285,9 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 
 ## What would be needed to change the verdict
 
-1. Obtain the Kaggle files and run `make all-real`; commit the code first so lineage records a real commit.
+1. (Done once, on one machine) obtain the Kaggle files and run the full chain; repeat from a tagged release on a second environment.
 2. Pass `scripts/reproduce_check.py` and `scripts/verify_readme_numbers.py`.
-3. Close the Security/Secret-management gaps (TLS, secret manager, rate limits, scanning).
+3. Close the remaining Security and secret-management gaps (publicly trusted TLS, a secret manager, shared rate limiting, a vulnerability scan that actually runs).
 4. Execute CI remotely; add off-site backups; run a load test.
 5. Complete a model-risk review including fairness and out-of-time validation (impossible with this dataset's lack of dates).
 
@@ -286,9 +295,9 @@ No *critical* category is `FAIL`; every critical `PARTIAL` is a reason the verdi
 
 Recorded at the time of writing:
 
-- `pytest -q`: **96 passed** (unit, leakage, registry, in-process API E2E, results tooling, and DB integration tests on fixtures); log in `artifacts/pytest_final.log`.
-- Real data: all eight files passed the contract with row counts equal to the published counts; the full `dbt build` on the real data passed twice (42 passed, 1 warning, 0 errors on the second run; the warning is the relationship check of bureau-balance rows against bureau).
-- Real data: training, selection on validation, a single test scoring, registration, promotion and the rollback drill, SHAP, drift simulation, segment analysis and the inference benchmark all ran; outputs are in `reports/`.
-- Reproduction: second `dbt build` gave an identical feature fingerprint; `scripts/reproduce_check.py` printed `REPRODUCED within tolerance 1e-06`.
-- `scripts/verify_readme_numbers.py`: `OK` (blocks equal regenerated output; no unregistered numbers in prose).
-- Fixture-only evidence (wiring, not model quality): `scripts/smoke_stack.py` `SMOKE PASSED`; `scripts/backup_restore.py drill` `RESTORE DRILL PASSED`. These were not repeated on the real database.
+- `pytest -q --cov=creditrisk`: **105 passed**; statement coverage of the package **87%**; log in `artifacts/pytest_cov_final.log`. Tests use fixtures; coverage is a statement count, not a measure of test quality.
+- Real data: eight files passed the contract with row counts equal to the published counts; full `dbt build` passed (42 passed, 1 warning, 0 errors; the warning is the relationship check of bureau-balance rows against bureau, whose many orphan rows are documented in `docs/feature_lineage.md`).
+- Real data: training, selection on validation, a single test scoring, registration, promotion decisions (including one operator override), rollback drill, SHAP, drift simulation, segment analysis, inference benchmark, concurrent load test, backup/restore drill and the container smoke test all ran; outputs are in `reports/`.
+- Reproduction: fingerprint identical after a rebuild; metrics reproduced to 1e-6 (`artifacts/reproduce_check2.log`).
+- `scripts/verify_readme_numbers.py`: `OK`.
+- Not done: any run on GitHub, any run on a second machine, off-site backup, vulnerability scan, container training with enough memory, independent data re-download.

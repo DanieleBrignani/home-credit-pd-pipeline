@@ -1,0 +1,42 @@
+{
+  "runs": [
+    {
+      "workers": 1,
+      "concurrency": 16,
+      "requests": 3000,
+      "errors": 0,
+      "throughput_rps": 22.0,
+      "latency_ms": {
+        "p50": 738.9,
+        "p95": 1044.2,
+        "p99": 1139.5,
+        "max": 1320.4
+      },
+      "status_codes": {
+        "200": 3000
+      }
+    },
+    {
+      "workers": 4,
+      "concurrency": 16,
+      "requests": 3000,
+      "errors": 0,
+      "throughput_rps": 34.3,
+      "latency_ms": {
+        "p50": 264.5,
+        "p95": 674.6,
+        "p99": 894.3,
+        "max": 1079.5
+      },
+      "status_codes": {
+        "200": 3000
+      }
+    }
+  ],
+  "conditions": {
+    "host": "Windows-11-10.0.26200-SP0",
+    "python": "3.13.3",
+    "cpu_count": 16,
+    "note": "client, API workers and Postgres share one machine; rate limiter disabled for the test; synchronous audit insert included; no TLS proxy in this path"
+  }
+}

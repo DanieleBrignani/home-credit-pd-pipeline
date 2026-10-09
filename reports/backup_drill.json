@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "database": "creditrisk",
+  "full_dump": false,
+  "dump_mb": 80.323337,
+  "backup_seconds": 13.074156284332275,
+  "restore_verify_seconds": 28.46735715866089,
+  "row_counts": {
+    "audit.predictions": 15482,
+    "marts.applicant_history_features": 307511,
+    "marts.training_dataset": 307511,
+    "meta.ingest_batches": 8,
+    "public.alembic_version": 1,
+    "public.datasets": 0,
+    "public.experiment_tags": 0,
+    "public.experiments": 2,
+    "public.input_tags": 0,
+    "public.inputs": 0,
+    "public.latest_metrics": 114,
+    "public.metrics": 114,
+    "public.model_version_tags": 26,
+    "public.model_versions": 6,
+    "public.params": 57,
+    "public.registered_model_aliases": 3,
+    "public.registered_model_tags": 0,
+    "public.registered_models": 1,
+    "public.runs": 6,
+    "public.tags": 84,
+    "public.trace_info": 0,
+    "public.trace_request_metadata": 0,
+    "public.trace_tags": 0
+  }
+}
