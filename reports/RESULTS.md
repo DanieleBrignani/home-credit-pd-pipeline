@@ -1,6 +1,6 @@
 # Results (generated)
 
-Source: `reports/metrics.json` (git `c0bb7cb5ba`, dataset `ds-73a3b3590c89`, feature schema `fs-508cbb598b`, feature-table fingerprint `83ca684bc5a8ed399e0c5ca1d81e8bdc`).
+Source: `reports/metrics.json` (git `acca4b6941`, dataset `ds-73a3b3590c89`, feature schema `fs-508cbb598b`, feature-table fingerprint `83ca684bc5a8ed399e0c5ca1d81e8bdc`).
 
 **Data used (canonical Kaggle files, row counts verified at ingest)**
 

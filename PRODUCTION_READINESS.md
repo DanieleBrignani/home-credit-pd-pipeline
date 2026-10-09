@@ -4,7 +4,7 @@
 
 Reasons, in order of weight:
 
-1. **Results exist now, but only from one machine and one run.** The pipeline has been run end to end on the real Home Credit files (row counts match the published counts), and the README results are generated from `reports/*.json`. They come from a single laptop run, recorded at commit `a975b6c` plus uncommitted fixes to dbt tests, compose and scripts (none touch features or the model). No second environment, CI runner or independent reviewer has reproduced them, and see category 28 for the reproduction check.
+1. **Results exist now, but only from one machine and one run.** The pipeline has been run end to end on the real Home Credit files (row counts match the published counts), and the README results are generated from `reports/*.json`. They come from a single laptop run, recorded at commit `1277446` plus uncommitted fixes to dbt tests, compose and scripts (none touch features or the model). No second environment, CI runner or independent reviewer has reproduced them, and see category 28 for the reproduction check.
 2. Most categories below are `PARTIAL`: the mechanism exists and is tested, but it has never run against real data, real traffic, a remote CI runner, or a real incident.
 3. No category is `FAIL` any more, but several `PARTIAL`s contain known gaps: no managed secret store, TLS only from a local certificate authority, no off-machine backups, and a CI workflow that has never run on a remote.
 
