@@ -141,9 +141,25 @@ DERIVED_FEATURES = [f.name for f in FEATURE_REGISTRY
 AGGREGATE_FEATURES = HISTORY_COLUMNS
 
 
-def _ratio(num: pd.Series, den: pd.Series) -> pd.Series:
+def _ratio_series(num: pd.Series, den: pd.Series) -> pd.Series:
+    """Series version, used only by tests/reference_features.py (the oracle)."""
     den = den.where(den > 0)
     return num / den
+
+
+def _num(df: pd.DataFrame, name: str, n: int) -> np.ndarray:
+    """float64 array for a column; missing column -> NaN; unparsable strings -> NaN (same as pd.to_numeric(errors='coerce'))."""
+    if name not in df:
+        return np.full(n, np.nan)
+    s = df[name]
+    if s.dtype.kind in "fiub":
+        return s.to_numpy(dtype="float64", na_value=np.nan)
+    return pd.to_numeric(s, errors="coerce").to_numpy(dtype="float64")
+
+
+def _ratio(num: np.ndarray, den: np.ndarray) -> np.ndarray:
+    with np.errstate(all="ignore"):
+        return num / np.where(den > 0, den, np.nan)
 
 
 def build_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -151,36 +167,47 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
 
     Missing history columns are treated as 'no history' (NaN -> presence flags 0, counts 0).
     Never reads TARGET / split / ids. Output columns == FEATURE_COLUMNS, in order.
+
+    Implemented on NumPy arrays with a single DataFrame construction at the end: the earlier column-by-column pandas version
+    cost ~100 ms per single-row request in pandas overhead. tests/reference_features.py keeps that version as an oracle;
+    tests (and a one-off run over all real rows) assert bit-identical output.
     """
-    out = pd.DataFrame(index=df.index)
-    for name in INPUT_COLUMNS_RAW:
-        out[name] = df[name] if name in df else np.nan
-    for name in HISTORY_COLUMNS:
-        out[name] = df[name] if name in df else np.nan
-    num_cols = [c for c in out.columns if c not in CATEGORICAL_FEATURES]
-    out[num_cols] = out[num_cols].apply(pd.to_numeric, errors="coerce").astype("float64")
+    n = len(df)
+    c: dict[str, np.ndarray] = {k: _num(df, k, n) for k in INPUT_COLUMNS_RAW if k not in CATEGORICAL_FEATURES}
+    c.update({k: _num(df, k, n) for k in HISTORY_COLUMNS})
 
     for k, col in _PRESENCE.items():
-        out[f"has_{k}_history"] = out[col].notna().astype("float64")
-    out[ZERO_FILL] = out[ZERO_FILL].fillna(0.0)
+        c[f"has_{k}_history"] = (~np.isnan(c[col])).astype("float64")
+    for k in ZERO_FILL:
+        c[k] = np.where(np.isnan(c[k]), 0.0, c[k])
 
-    out["credit_income_ratio"] = _ratio(out["amt_credit"], out["amt_income_total"])
-    out["annuity_income_ratio"] = _ratio(out["amt_annuity"], out["amt_income_total"])
-    out["credit_term_months"] = _ratio(out["amt_credit"], out["amt_annuity"])
-    out["credit_goods_ratio"] = _ratio(out["amt_credit"], out["amt_goods_price"])
-    out["income_per_family_member"] = _ratio(out["amt_income_total"], out["cnt_fam_members"])
-    out["employed_to_age_ratio"] = out["days_employed"] / out["days_birth"].where(out["days_birth"] != 0)
-    ext = out[["ext_source_1", "ext_source_2", "ext_source_3"]]
-    out["ext_source_mean"] = ext.mean(axis=1)
-    out["ext_source_min"] = ext.min(axis=1)
-    out["bureau_debt_to_income"] = _ratio(out["bureau_sum_debt"], out["amt_income_total"])
+    c["credit_income_ratio"] = _ratio(c["amt_credit"], c["amt_income_total"])
+    c["annuity_income_ratio"] = _ratio(c["amt_annuity"], c["amt_income_total"])
+    c["credit_term_months"] = _ratio(c["amt_credit"], c["amt_annuity"])
+    c["credit_goods_ratio"] = _ratio(c["amt_credit"], c["amt_goods_price"])
+    c["income_per_family_member"] = _ratio(c["amt_income_total"], c["cnt_fam_members"])
+    with np.errstate(all="ignore"):
+        c["employed_to_age_ratio"] = c["days_employed"] / np.where(c["days_birth"] != 0, c["days_birth"], np.nan)
+    e1, e2, e3 = c["ext_source_1"], c["ext_source_2"], c["ext_source_3"]
+    present = (~np.isnan(e1)).astype("float64") + (~np.isnan(e2)) + (~np.isnan(e3))
+    total = np.where(np.isnan(e1), 0.0, e1) + np.where(np.isnan(e2), 0.0, e2) + np.where(np.isnan(e3), 0.0, e3)
+    with np.errstate(all="ignore"):
+        c["ext_source_mean"] = np.where(present > 0, total / present, np.nan)
+    c["ext_source_min"] = np.fmin(np.fmin(e1, e2), e3)
+    c["bureau_debt_to_income"] = _ratio(c["bureau_sum_debt"], c["amt_income_total"])
 
-    for c in CATEGORICAL_FEATURES:
-        out[c] = df[c].astype("object") if c in df else None
-        out[c] = out[c].where(out[c].notna(), None)
+    for k in NUMERIC_FEATURES:                                  # inf (e.g. from tiny denominators) -> NaN
+        v = c[k]
+        c[k] = np.where(np.isinf(v), np.nan, v)
 
-    out = out.replace([np.inf, -np.inf], np.nan)
-    return out[FEATURE_COLUMNS]
+    for k in CATEGORICAL_FEATURES:
+        if k in df:
+            arr = df[k].to_numpy(dtype=object, copy=True)
+            arr[pd.isna(arr)] = None
+        else:
+            arr = np.full(n, None, dtype=object)
+        c[k] = arr
+    return pd.DataFrame(c, index=df.index)[FEATURE_COLUMNS]
 
 
 def assert_no_forbidden(columns) -> None:

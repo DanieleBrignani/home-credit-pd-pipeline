@@ -173,3 +173,13 @@ def test_training_frame_is_ordered_independent_of_physical_row_order(built_db):
     with data.connect() as c:
         df = data.load_training_frame(c)
     assert df.sk_id_curr.is_monotonic_increasing
+
+
+def test_audit_ddl_is_safe_when_many_workers_start_at_once(built_db):
+    """Regression: with several API workers the audit DDL raced ('tuple concurrently updated') and the app failed to start."""
+    from concurrent.futures import ThreadPoolExecutor
+    from creditrisk import config
+    from creditrisk.audit import PostgresAudit
+    with ThreadPoolExecutor(8) as ex:
+        results = list(ex.map(lambda _: PostgresAudit(config.pg_dsn()).ping(), range(8)))
+    assert all(results)

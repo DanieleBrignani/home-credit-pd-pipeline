@@ -81,3 +81,42 @@ def test_feature_counts_consistent():
     c = features.feature_counts()
     assert c["total_model_input_columns"] == len(FEATURE_COLUMNS)
     assert c["raw_application_columns"] + c["history_aggregates_from_dbt"] + c["derived_in_python"] == len(FEATURE_COLUMNS)
+
+
+# ---------------- vectorised build_features must be bit-identical to the reference implementation
+def _random_frame(n=400, seed=0):
+    import numpy as np
+    rng = np.random.default_rng(seed)
+    df = pd.DataFrame({
+        "amt_income_total": rng.lognormal(12, .6, n), "amt_credit": rng.lognormal(13, .6, n), "amt_annuity": rng.lognormal(9.5, .5, n),
+        "amt_goods_price": rng.lognormal(12.8, .6, n), "days_birth": -rng.integers(7000, 25000, n),
+        "days_employed": -rng.integers(0, 15000, n).astype(float), "cnt_fam_members": rng.integers(0, 6, n).astype(float),
+        "ext_source_1": rng.random(n), "ext_source_2": rng.random(n), "ext_source_3": rng.random(n),
+        "name_contract_type": rng.choice(["Cash loans", "Revolving loans", None], n),
+        "occupation_type": rng.choice(["Laborers", None], n),
+        "bureau_n_credits": rng.integers(0, 9, n).astype(float), "bureau_sum_debt": rng.lognormal(10, 1, n),
+        "inst_n_records": rng.integers(0, 90, n).astype(float), "inst_late_share": rng.random(n),
+    })
+    for col in ("ext_source_1", "ext_source_3", "amt_annuity", "bureau_n_credits", "inst_late_share", "days_employed"):
+        df.loc[rng.random(n) < .25, col] = np.nan
+    df.loc[0, "amt_income_total"] = 0.0           # zero denominator
+    df.loc[1, "amt_annuity"] = -5.0               # negative denominator
+    df.loc[2, "days_birth"] = 0                   # zero age denominator
+    df.loc[3, "amt_credit"] = 1e308; df.loc[3, "amt_income_total"] = 1e-300   # overflow to inf
+    df.loc[4, ["ext_source_1", "ext_source_2", "ext_source_3"]] = np.nan      # all external scores missing
+    df["inst_n_records"] = df["inst_n_records"].astype(object); df.loc[5, "inst_n_records"] = "12"   # numeric string
+    df.loc[6, "amt_goods_price"] = "bad"           # unparsable -> NaN
+    return df
+
+
+@pytest.mark.parametrize("seed", [0, 1, 2])
+def test_vectorised_build_features_is_bit_identical_to_reference(seed):
+    from tests.reference_features import build_features_reference
+    df = _random_frame(seed=seed)
+    pd.testing.assert_frame_equal(build_features(df), build_features_reference(df), check_exact=True)
+
+
+def test_vectorised_build_features_identical_on_minimal_and_single_row_inputs():
+    from tests.reference_features import build_features_reference
+    for df in (pd.DataFrame({"amt_income_total": [1.0], "amt_credit": [2.0], "days_birth": [-9000]}), _row(), _random_frame(1)):
+        pd.testing.assert_frame_equal(build_features(df), build_features_reference(df), check_exact=True)

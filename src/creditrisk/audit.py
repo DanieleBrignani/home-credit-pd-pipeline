@@ -59,7 +59,9 @@ class PostgresAudit:
         self.pool = make_pool(dsn)
         conn = self.pool.getconn()
         try:
-            conn.cursor().execute(DDL); conn.commit()
+            cur = conn.cursor()
+            cur.execute("select pg_advisory_xact_lock(hashtext('audit-ddl'))")   # several API workers start at once; DDL must not race
+            cur.execute(DDL); conn.commit()
         finally:
             self.pool.putconn(conn)
 
