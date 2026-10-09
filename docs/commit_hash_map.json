@@ -1,5 +1,5 @@
 {
-  "note": "The commit history was rewritten once (before any push) to remove commit-message trailers. The tree contents are unchanged. Hashes recorded in MLflow run tags and in artifacts outside this repository still show the old values; map them here.",
+  "note": "The commit history was rewritten once, before any push; file contents are unchanged. Hashes stored in MLflow run tags and in files outside this repository carry the earlier values; this table maps them to the current commits.",
   "old_to_new": {
     "5980d740635434ef4c6c0fab911f79267db21584": "a975b6c43135afbe3e5089207235201c4351f8bd",
     "589a62baac9ecf8e265fab1ea81c04f752575d87": "96e68cf6a96aec3eb3202b331a31442aa6a256ff",
