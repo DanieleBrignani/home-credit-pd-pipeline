@@ -5,7 +5,7 @@
 Reasons, in order of weight:
 
 1. **Results exist now, but only from one machine and one run.** The pipeline has been run end to end on the real Home Credit files (row counts match the published counts), and the README results are generated from `reports/*.json`. They come from a single laptop run, recorded at commit `1277446` plus uncommitted fixes to dbt tests, compose and scripts (none touch features or the model). No second environment, CI runner or independent reviewer has reproduced them, and see category 28 for the reproduction check.
-2. Most categories below are `PARTIAL`: the mechanism exists and is tested, but it has never run against real data, real traffic, a remote CI runner, or a real incident.
+2. Most categories below are `PARTIAL`: the mechanism exists and is tested, but it has run on one machine against real data and in one CI run on a remote Linux runner, but never under real traffic, in a second environment, or through a real incident.
 3. No category is `FAIL` any more, but several `PARTIAL`s contain known gaps: no managed secret store, TLS only from a local certificate authority, no off-machine backups, and a CI workflow that has never run on a remote.
 
 This is a reviewed, tested **engineering reference implementation**, not a deployable lending service. It estimates PD and makes no lending decision.
@@ -159,8 +159,8 @@ Counts: 7 PASS, 22 PARTIAL, 0 FAIL. No *critical* category is `FAIL`; every crit
 - **Requirement:** authenticated, least-privilege, minimal attack surface.
 - **Evidence:** API key on `/predict` and `/model` (hash compared in constant time), per-key token-bucket rate limit, token on `/admin/reload`, input models with `extra=forbid` and range limits, non-root container, no payload logging, TLS proxy that does not expose `/admin` or `/metrics`, API port bound to loopback. The real-stack smoke test checked unauthenticated rejection, blocked endpoints and non-root.
 - **Test:** `test_predict_requires_valid_api_key`, `test_rate_limit_per_key_returns_429_with_retry_after`, `test_admin_reload_requires_token`; `scripts/smoke_stack.py --real`.
-- **Limitation:** the TLS certificate comes from a local certificate authority (not publicly trusted), no mutual TLS or OAuth, the rate limit is per API process (not shared across workers), no key-rotation tooling, a static admin token, the vulnerability scan is defined in CI but has never run, model files are pickles (load only from a trusted registry).
-- **Required improvement:** publicly trusted certificate or load-balancer TLS, shared rate limiting, scanner run in CI, signed model artifacts.
+- **Limitation:** the TLS certificate comes from a local certificate authority (not publicly trusted), no mutual TLS or OAuth, the rate limit is per API process (not shared across workers), no key-rotation tooling, a static admin token, the vulnerability scan runs in CI in report-only mode (its findings were not reviewed and do not gate the build), model files are pickles (load only from a trusted registry).
+- **Required improvement:** publicly trusted certificate or load-balancer TLS, shared rate limiting, review the scan findings and make the scan gating, signed model artifacts.
 
 ## 13. Secret management — PARTIAL
 - **Requirement:** no secrets in code; managed storage and rotation.
@@ -199,16 +199,16 @@ Counts: 7 PASS, 22 PARTIAL, 0 FAIL. No *critical* category is `FAIL`; every crit
 
 ## 18. CI/CD — PARTIAL
 - **Requirement:** automated build/test on change; automated, gated delivery.
-- **Evidence:** `.github/workflows/ci.yml` (lineage freshness, full pytest against a Postgres service, dbt parse, image builds).
-- **Test:** none — the workflow has **never run on GitHub** (no remote, no commit); its steps were exercised locally.
-- **Limitation:** no CD, no release tagging, no registry push, no real-data job (licence-gated).
-- **Required improvement:** push, observe a green run, add image publishing and a gated deploy.
+- **Evidence:** `.github/workflows/ci.yml` (lineage freshness, full pytest against a Postgres service with coverage, dbt parse, builds of the API, MLflow and pipeline images, a report-only image scan). It has now run on GitHub Actions: run 1 passed `test` (about 3 min) and failed `docker-build` because I had written a non-existent tag for a third-party scan action; run 2 on commit `e2cbfb6`, after replacing that action with the scanner's container image, passed both jobs (`test` 2 min 35 s, `docker-build` 3 min 3 s, 3 min 7 s in total).
+- **Test:** the two GitHub Actions runs above (checked from the Actions page).
+- **Limitation:** the CI uses fixtures only (the licence-gated Kaggle files are not in the repository); no CD, no release tagging, no image publishing, no deploy gate; the image scan is report-only and its findings were not reviewed; the runner label is scheduled to move to a newer Ubuntu release and two actions are flagged for a Node.js deprecation (warnings only); no branch protection or required checks.
+- **Required improvement:** protect `main` with required checks, tag releases, publish images, make the scan gating after reviewing the first report, pin action versions by commit.
 
 ## 19. Containerization — PARTIAL
 - **Requirement:** reproducible, minimal, safe images.
 - **Evidence:** API, MLflow and pipeline images build; the compose stack ran healthy on the real data; the API runs as non-root with a healthcheck; serving library versions are pinned; a Linux lock file taken from the pipeline image has the same versions of the key libraries as the Windows lock.
 - **Test:** `scripts/smoke_stack.py --real`.
-- **Limitation:** the pipeline image ran up to data loading but **training inside Docker with the default memory limit crashed the Docker engine**, so the reported results come from a host run; the API image is large (about 1.6 GB); base images are not pinned by digest; the image scan is defined in CI and never executed.
+- **Limitation:** the pipeline image ran up to data loading but **training inside Docker with the default memory limit crashed the Docker engine**, so the reported results come from a host run; the API image is large (about 1.6 GB); base images are not pinned by digest; the image scan runs in CI in report-only mode and its findings were not reviewed.
 - **Required improvement:** raise the container memory limit (about 12 GB) and re-run the pipeline in the container; slim serving image; digest pins; scanner run.
 
 ## 20. Observability — PARTIAL
@@ -300,4 +300,5 @@ Recorded at the time of writing:
 - Real data: training, selection on validation, a single test scoring, registration, promotion decisions (including one operator override), rollback drill, SHAP, drift simulation, segment analysis, inference benchmark, concurrent load test, backup/restore drill and the container smoke test all ran; outputs are in `reports/`.
 - Reproduction: fingerprint identical after a rebuild; metrics reproduced to 1e-6 (`artifacts/reproduce_check2.log`).
 - `scripts/verify_readme_numbers.py`: `OK`.
-- Not done: any run on GitHub, any run on a second machine, off-site backup, vulnerability scan, container training with enough memory, independent data re-download.
+- CI: GitHub Actions run 2 on `e2cbfb6` passed both jobs (`test`, `docker-build`); run 1 had failed on a wrong action tag, since fixed. CI uses fixtures only.
+- Not done: any run on a second machine, off-site backup, review of the image-scan findings, container training with enough memory, independent data re-download, any use of the CI for real-data results.
