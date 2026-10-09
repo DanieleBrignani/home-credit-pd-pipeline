@@ -90,9 +90,24 @@ def set_challenger(version: int) -> None:
     c.set_registered_model_alias(REGISTERED_MODEL, "challenger", str(version))
 
 
-def promote(version: int, dry_run: bool = False) -> dict:
+def promote(version: int, dry_run: bool = False, force_reason: str | None = None) -> dict:
+    """force_reason: operator override. The gates are still evaluated and recorded, the failing ones are listed in the decision,
+    and the override is logged as `override_promoted` with the stated reason, so it stays auditable."""
     c = _client()
     decision = evaluate_promotion(c, version)
+    if force_reason and not dry_run:
+        if not decision["promote"]:
+            decision = {**decision, "overridden_failed_gates": [x["gate"] for x in decision["checks"] if not x["passed"]],
+                        "promote": True, "override_reason": force_reason}
+            kind = "override_promoted"
+        else:
+            kind = "promoted"
+        old = _alias_version(c, "champion")
+        if old is not None:
+            c.set_registered_model_alias(REGISTERED_MODEL, "previous_champion", old.version)
+        c.set_registered_model_alias(REGISTERED_MODEL, "champion", str(version))
+        _log_decision(c, kind, version, decision)
+        return decision
     if dry_run or not decision["promote"]:
         if not dry_run:
             _log_decision(c, "rejected", version, decision)
@@ -158,10 +173,11 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status")
     p = sub.add_parser("promote"); p.add_argument("version", type=int); p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--force", metavar="REASON", help="operator override with a mandatory reason; gates are still recorded")
     r = sub.add_parser("rollback"); r.add_argument("--to", type=int); r.add_argument("--reason", default="manual")
     ch = sub.add_parser("challenger"); ch.add_argument("version", type=int)
     a = ap.parse_args(argv)
-    res = {"status": status, "promote": lambda: promote(a.version, a.dry_run), "challenger": lambda: set_challenger(a.version),
+    res = {"status": status, "promote": lambda: promote(a.version, a.dry_run, a.force), "challenger": lambda: set_challenger(a.version),
            "rollback": lambda: rollback(a.to, a.reason)}[a.cmd]
     print(json.dumps(res() if callable(res) else res, indent=2, default=str))
     return 0

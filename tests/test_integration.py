@@ -165,3 +165,11 @@ def test_test_split_untouched_by_selection(built_db, monkeypatch):
     only_tv = {k: frames[k] for k in ("train", "valid")}
     out = train.fit_and_select(only_tv, n_iter=1, seed=1)
     assert set(out) == {"logreg", "lightgbm"}
+
+
+def test_training_frame_is_ordered_independent_of_physical_row_order(built_db):
+    """load_training_frame sorts by id, so model fitting does not depend on how Postgres happens to store the rows."""
+    from creditrisk import data
+    with data.connect() as c:
+        df = data.load_training_frame(c)
+    assert df.sk_id_curr.is_monotonic_increasing

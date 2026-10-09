@@ -97,8 +97,9 @@ def render_block() -> tuple[str, str]:
     if life:
         a("\n**Champion / challenger / rollback drill** (`reports/lifecycle_demo.json`, decisions in `reports/model_decisions.jsonl`)\n")
         for d in life["decision_history"]:
-            if d["kind"] in ("promoted", "rejected"):
-                a(f"- {d['ts'][:19]}Z version {d['version']}: **{d['kind'].upper()}**")
+            if d["kind"] in ("promoted", "rejected", "override_promoted"):
+                extra = f" (operator override, reason: {d['override_reason']}; gates overridden: {', '.join(d['overridden_failed_gates'])})" if d["kind"] == "override_promoted" else ""
+                a(f"- {d['ts'][:19]}Z version {d['version']}: **{d['kind'].upper()}**{extra}")
                 for chk in d.get("checks", []):
                     a(f"  - {chk['gate']}: {'pass' if chk['passed'] else 'FAIL'} ({chk['detail']})")
         rb = life.get("rollback_drill")

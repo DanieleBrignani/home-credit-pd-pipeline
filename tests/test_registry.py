@@ -118,3 +118,14 @@ def test_lifecycle_keeps_baseline_when_challenger_not_better_enough(reg):
     lr, gb = reg(0.74), reg(0.7405)
     steps = registry.lifecycle_step({"logreg": lr, "lightgbm": gb}, "lightgbm")
     assert steps[1]["promote"] is False and registry.status()["champion"]["version"] == lr
+
+
+def test_operator_override_is_recorded_with_failed_gates_and_reason(reg, tmp_path):
+    a = reg(0.74); registry.promote(a)
+    b = reg(0.7405)                      # not enough gain: the normal rule rejects it
+    assert not registry.promote(b)["promote"]
+    d = registry.promote(b, force_reason="re-baseline after determinism fix")
+    assert d["promote"] and d["override_reason"] and "gate2_auc_gain" in d["overridden_failed_gates"]
+    s = registry.status()
+    assert s["champion"]["version"] == b and s["previous_champion"]["version"] == a
+    assert '"kind": "override_promoted"' in (tmp_path / "decisions.jsonl").read_text()

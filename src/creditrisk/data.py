@@ -19,7 +19,9 @@ def connect():
 
 
 def load_training_frame(conn) -> pd.DataFrame:
-    return pd.read_sql(f"select * from {TRAINING_TABLE}", conn)
+    # ORDER BY: results must not depend on the physical row order of the table (LightGBM row-subsampling is index-based, so a
+    # rebuilt table in a different physical order gave a slightly different model before this was added).
+    return pd.read_sql(f"select * from {TRAINING_TABLE} order by sk_id_curr", conn)
 
 
 def split_frames(df: pd.DataFrame) -> dict[str, tuple[pd.DataFrame, pd.Series]]:
