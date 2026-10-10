@@ -1,3 +1,4 @@
+README.md
 pyproject.toml
 src/creditrisk/__init__.py
 src/creditrisk/api.py
@@ -7,6 +8,7 @@ src/creditrisk/contracts.py
 src/creditrisk/data.py
 src/creditrisk/explain.py
 src/creditrisk/features.py
+src/creditrisk/flows.py
 src/creditrisk/ingest.py
 src/creditrisk/metrics.py
 src/creditrisk/modeling.py
@@ -17,3 +19,10 @@ src/creditrisk.egg-info/PKG-INFO
 src/creditrisk.egg-info/SOURCES.txt
 src/creditrisk.egg-info/dependency_links.txt
 src/creditrisk.egg-info/top_level.txt
+tests/test_api.py
+tests/test_contracts_metrics.py
+tests/test_features.py
+tests/test_integration.py
+tests/test_leakage.py
+tests/test_registry.py
+tests/test_results_pipeline.py

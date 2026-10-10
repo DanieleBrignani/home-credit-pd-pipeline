@@ -177,7 +177,7 @@ Counts: 7 PASS, 22 PARTIAL, 0 FAIL. No *critical* category is `FAIL`; every crit
 - **Requirement:** no secrets in code; managed storage and rotation.
 - **Evidence:** secrets only via env; `.env` git-ignored; compose uses `:?` so missing secrets fail startup; API keys stored as hashes.
 - **Test:** `test_app_refuses_to_start_without_auth_configuration`.
-- **Limitation:** no secret manager or rotation; `.env` lives in a OneDrive-synced folder on this machine; the MLflow DB URI appears in the container command line; `API_KEY_LOCAL` plaintext sits in the local `.env` for the smoke test.
+- **Limitation:** no secret manager or rotation; `.env` was synced to OneDrive while the project lived in a synced folder (the project has since been moved to a non-synced directory, but the file may remain in OneDrive's cloud recycle bin until emptied, and the local-development values in it were not rotated); the MLflow DB URI appears in the container command line; `API_KEY_LOCAL` plaintext sits in the local `.env` for the smoke test.
 - **Required improvement:** secret manager, short-lived credentials, keep `.env` out of synced folders.
 
 ## 14. Privacy — PARTIAL

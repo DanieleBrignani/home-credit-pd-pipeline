@@ -63,7 +63,7 @@ The API returns `503` and releases no score (fail-closed). Restore the database,
 
 ## Secrets
 
-`.env` is git-ignored but, if the project folder is under a synced drive (e.g. OneDrive), it is synced. Keep real secrets out of synced folders; the values in `.env.example` are placeholders.
+`.env` is git-ignored but, if the project folder is under a synced drive (e.g. OneDrive), it is synced. Keep the project and `.env` outside synced folders (this one lives in `C:\dev`); the values in `.env.example` are placeholders. If a `.env` was ever synced, treat its values as exposed and rotate them.
 
 ## Upgrading MLflow (registry schema migration)
 
