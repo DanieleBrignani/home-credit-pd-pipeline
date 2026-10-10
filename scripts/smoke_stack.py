@@ -79,6 +79,7 @@ def main() -> int:
             client.set_registered_model_alias("credit-risk-pd", "champion", str(reg["registered_versions"][reg["selected_on_validation"]]))
         champ = client.get_model_version_by_alias("credit-risk-pd", "champion")
         results["champion_version"] = int(champ.version)
+        wait(f"{API}/health")   # the API loads the model at start-up; do not call it before it is listening
         results["api_reload_status"] = httpx.post(f"{API}/admin/reload", headers=adm, timeout=120).status_code
         wait(f"{API}/ready")
         wait(f"{TLS}/health", verify=False)

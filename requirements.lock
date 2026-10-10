@@ -1,5 +1,8 @@
 # Exact versions of the environment the code was tested in (Windows, Python 3.13). Generated: pip freeze --exclude-editable
 agate==1.9.1
+aiohappyeyeballs==2.7.1
+aiohttp==3.14.4
+aiosignal==1.4.0
 aiosqlite==0.22.1
 alembic==1.20.0
 amplitude-analytics==1.2.3
@@ -23,6 +26,7 @@ cloudpickle==3.1.2
 colorama==0.4.6
 contourpy==1.4.0
 coolname==5.0.0
+coverage==7.16.2
 cronsim==2.7
 cryptography==50.0.2
 cycler==0.12.1
@@ -43,7 +47,9 @@ docstring_parser==0.18.0
 exceptiongroup==1.3.1
 fastapi==0.143.0
 Flask==3.1.3
+flask-cors==6.0.5
 fonttools==4.66.1
+frozenlist==1.8.0
 fsspec==2026.9.0
 gitdb==4.0.12
 GitPython==3.2.0
@@ -61,6 +67,7 @@ h2==4.4.1
 hpack==4.2.0
 httpcore==1.0.9
 httpx==0.28.1
+huey==3.4.0
 humanize==4.16.0
 hyperframe==6.1.0
 idna==3.20
@@ -87,16 +94,19 @@ mashumaro==3.17
 matplotlib==3.11.2
 mdurl==0.1.2
 metricflow==0.213.0
-mlflow==2.22.5
-mlflow-skinny==2.22.5
+mlflow==3.17.0
+mlflow-skinny==3.17.0
+mlflow-tracing==3.17.0
 more-itertools==10.8.0
 msgpack==1.2.3
+multidict==6.9.1
 narwhals==2.26.0
 networkx==3.7
 numba==0.68.0
 numpy==2.5.3
 oauthlib==4.0.0
 opentelemetry-api==1.45.1
+opentelemetry-proto==1.45.1
 opentelemetry-sdk==1.45.1
 opentelemetry-semantic-conventions==0.66b1
 orderly-set==5.5.0
@@ -108,7 +118,9 @@ pathspec==1.0.4
 pillow==12.3.0
 pluggy==1.6.0
 prefect==3.8.8
+prettytable==3.18.0
 prometheus_client==0.26.0
+propcache==0.5.4
 protobuf==6.33.6
 psycopg2-binary==2.9.13
 py-key-value-aio==0.4.6
@@ -124,6 +136,7 @@ pydocket==0.26.2
 Pygments==2.21.0
 pyparsing==3.3.3
 pytest==9.1.1
+pytest-cov==7.1.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.4
 python-json-logger==4.2.0
@@ -151,6 +164,7 @@ semver==3.1.0
 shap==0.52.0
 shellingham==1.5.4
 six==1.17.0
+skops==0.16.0
 slicer==0.0.8
 smmap==5.0.3
 sniffio==1.3.1
@@ -173,7 +187,9 @@ uncalled-for==0.4.0
 urllib3==2.8.0
 uvicorn==0.54.0
 waitress==3.0.2
+wcwidth==0.9.2
 websockets==16.1.1
 Werkzeug==3.1.9
 whenever==0.10.5
+yarl==1.25.1
 zipp==4.1.1

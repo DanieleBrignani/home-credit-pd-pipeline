@@ -108,9 +108,9 @@ Timings depend on the machine; they are measured, not bit-reproducible. Metrics 
 | 1 | 16 | 3,000 | 0 | 22.0 | 738.9 / 1044.2 / 1139.5 |
 | 4 | 16 | 3,000 | 0 | 34.3 | 264.5 / 674.6 / 894.3 |
 
-**Container smoke test on the real stack** (`reports/smoke_stack_real.json`): TLS proxy, authentication, audit row, blocked operational endpoints, Prometheus and Grafana all checked. Measured rollback (alias flip, API reload, new version observed): 21.4 s; roll-forward: 21.57 s.
+**Container smoke test on the real stack** (`reports/smoke_stack_real.json`): TLS proxy, authentication, audit row, blocked operational endpoints, Prometheus and Grafana all checked. Measured rollback (alias flip, API reload, new version observed): 8.82 s; roll-forward: 7.6 s.
 
-**Backup/restore drill on the real database** (`reports/backup_drill.json`): PASSED; irreproducible data only (audit, registry, lineage, marts), dump 80.3 MB, backup 13.1 s, restore and verification 28.5 s, all table row counts equal.
+**Backup/restore drill on the real database** (`reports/backup_drill.json`): PASSED; irreproducible data only (audit, registry, lineage, marts), dump 80.3 MB, backup 41.5 s, restore and verification 70.5 s, all table row counts equal.
 
 **Where the champion is weaker: segment analysis on the test split** (descriptive only; `reports/failure_analysis.json`; AUC shown only for segments with enough rows and both classes)
 

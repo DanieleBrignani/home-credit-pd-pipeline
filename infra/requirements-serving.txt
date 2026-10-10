@@ -11,7 +11,7 @@ uvicorn==0.54.0
 pydantic==2.14.0
 psycopg2-binary>=2.9
 prometheus-client>=0.20
-# Lower bounds added after an image scan (fixed versions available); the scan also flags mlflow 2.x itself, fixed only in 3.x
+# Lower bounds added after an image scan (fixed versions available); the scan flagged the bundled pip and, until the MLflow 3.17 upgrade, mlflow 2.x itself
 urllib3>=2.8.0
 msgpack>=1.2.1
 setuptools>=78.1.1

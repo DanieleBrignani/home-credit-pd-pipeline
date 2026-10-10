@@ -15,8 +15,8 @@
   "grafana_dashboard_provisioned": true,
   "prometheus_alert_rules_loaded": 5,
   "api_container_non_root": true,
-  "rollback_seconds_flip_reload_confirmed": 21.4,
-  "roll_forward_seconds": 21.57,
+  "rollback_seconds_flip_reload_confirmed": 8.82,
+  "roll_forward_seconds": 7.6,
   "prediction_served_by_rolled_back_model": true,
   "rollback_from": 6,
   "rollback_to": 2

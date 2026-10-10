@@ -64,3 +64,13 @@ The API returns `503` and releases no score (fail-closed). Restore the database,
 ## Secrets
 
 `.env` is git-ignored but, if the project folder is under a synced drive (e.g. OneDrive), it is synced. Keep real secrets out of synced folders; the values in `.env.example` are placeholders.
+
+## Upgrading MLflow (registry schema migration)
+
+The registry schema migration is one-way. Do it in this order:
+
+1. `python scripts/backup_restore.py drill` (must print `RESTORE DRILL PASSED`).
+2. Rehearse on a copy: restore the dump into a scratch database, run `mlflow db upgrade <scratch uri>` with the new image, start a server on the copy, load the champion and compare predictions with the running stack.
+3. Only then run `mlflow db upgrade <real uri>` and start the new server.
+
+Notes from the 2.22 to 3.17 upgrade: the server needs `--allowed-hosts` with the compose service name, the artifact destination must be a URI (`file:///mlartifacts`), and `log_model` is called with an explicit serialization format.
