@@ -173,7 +173,8 @@ def main(argv=None) -> int:
             (d / "feature_columns.json").write_text(json.dumps(FEATURE_COLUMNS))
             mlflow.log_artifacts(str(d)); mlflow.log_artifact(str(cal_png))
             mlflow.log_artifact(str(config.ROOT / "docs" / "feature_lineage.md")) if (config.ROOT / "docs" / "feature_lineage.md").exists() else None
-            info = mlflow.sklearn.log_model(c["model"], artifact_path="model")
+            info = mlflow.sklearn.log_model(c["model"], artifact_path="model",
+                                            serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_CLOUDPICKLE)
             if not args.no_register:
                 mv = mlflow.register_model(info.model_uri, REGISTERED_MODEL)
                 client.set_model_version_tag(REGISTERED_MODEL, mv.version, "family", n)

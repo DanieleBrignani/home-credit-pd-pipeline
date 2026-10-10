@@ -4,7 +4,7 @@ pandas==2.3.3
 scikit-learn==1.9.1
 lightgbm==4.7.0
 shap==0.52.0
-mlflow==2.22.5
+mlflow==3.17.0
 sqlalchemy>=2.0,<2.1
 fastapi==0.143.0
 uvicorn==0.54.0

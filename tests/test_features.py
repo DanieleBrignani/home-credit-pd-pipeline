@@ -105,6 +105,7 @@ def _random_frame(n=400, seed=0):
     df.loc[3, "amt_credit"] = 1e308; df.loc[3, "amt_income_total"] = 1e-300   # overflow to inf
     df.loc[4, ["ext_source_1", "ext_source_2", "ext_source_3"]] = np.nan      # all external scores missing
     df["inst_n_records"] = df["inst_n_records"].astype(object); df.loc[5, "inst_n_records"] = "12"   # numeric string
+    df["amt_goods_price"] = df["amt_goods_price"].astype(object)
     df.loc[6, "amt_goods_price"] = "bad"           # unparsable -> NaN
     return df
 

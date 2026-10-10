@@ -1,5 +1,8 @@
 FROM python:3.13-slim
-RUN pip install --no-cache-dir mlflow==2.22.5 "sqlalchemy>=2.0,<2.1" psycopg2-binary
+RUN apt-get update && apt-get install -y --no-install-recommends libpcre2-8-0 && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir mlflow==3.17.0 "sqlalchemy>=2.0,<2.1" psycopg2-binary
+# No package installer in the runtime image (pip bundles its own copies of urllib3/msgpack that scanners flag).
+RUN pip uninstall -y pip setuptools wheel
 RUN useradd -r -u 10001 mlf && mkdir /mlartifacts && chown mlf /mlartifacts
 USER mlf
 EXPOSE 5000

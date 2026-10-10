@@ -15,3 +15,4 @@ tests/fixtures/raw/
 artifacts/
 .coverage
 htmlcov/
+.venv3/
