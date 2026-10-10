@@ -382,3 +382,7 @@ python -m venv .venv && .venv/Scripts/pip install -r requirements.txt && .venv/S
 # place the Kaggle CSVs in data/raw/, then:
 make all-real
 ```
+
+## License
+
+The code in this repository is released under the MIT License (see [LICENSE](LICENSE)). The Home Credit Default Risk data is **not** included and remains subject to the terms of its Kaggle competition.
